@@ -68,8 +68,8 @@ async function findOrCreateFolder(name: string, parentId?: string): Promise<stri
   return createResult.data.id!;
 }
 
-// Create the folder structure: Root → Client → Campaign → Date
-async function ensureFolderPath(opts: { client: string; campaign: string; dateFolder: string }): Promise<string> {
+// Create the folder structure: Root → Client → Campaign → Publication
+async function ensureFolderPath(opts: { client: string; campaign: string; publication: string }): Promise<string> {
   const config = await readConfig();
   
   // Get or create root folder
@@ -90,29 +90,33 @@ async function ensureFolderPath(opts: { client: string; campaign: string; dateFo
     await writeConfig(updatedConfig);
   }
 
-  // Create folder hierarchy: Client → Campaign → Date
+  // Create folder hierarchy: Client → Campaign → Publication
   const clientFolderId = await findOrCreateFolder(opts.client, rootFolderId);
   const campaignFolderId = await findOrCreateFolder(opts.campaign, clientFolderId);
-  const dateFolderId = await findOrCreateFolder(opts.dateFolder, campaignFolderId);
+  const publicationFolderId = await findOrCreateFolder(opts.publication, campaignFolderId);
 
-  return dateFolderId;
+  return publicationFolderId;
 }
 
-export async function uploadIntoPath(opts: { file: File; client: string; campaign: string; publication: string; dateFolder: string; }) {
+export async function uploadIntoPath(opts: { file: File; client: string; campaign: string; publication: string; }) {
   const drive = await driveClient();
   if (!drive) throw new Error('Not authenticated with Google Drive');
   
   const parentId = await ensureFolderPath({ 
     client: opts.client, 
     campaign: opts.campaign, 
-    dateFolder: opts.dateFolder 
+    publication: opts.publication
   });
 
   const arrayBuf = await opts.file.arrayBuffer();
   const buf = Buffer.from(arrayBuf);
 
-  // Include publication in filename for clarity
-  const filename = `${opts.publication}_${opts.file.name}`;
+  // Create filename with publication_date_originalname format
+  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+  const originalName = opts.file.name;
+  const fileExtension = originalName.substring(originalName.lastIndexOf('.'));
+  const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
+  const filename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
 
   const created = await drive.files.create({
     requestBody: { 

@@ -18,7 +18,6 @@ export default function HomePage() {
   const [pub, setPub] = useState('');
   const [client, setClient] = useState('');
   const [campaign, setCampaign] = useState('');
-  const [date, setDate] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState('');
 
@@ -43,13 +42,12 @@ export default function HomePage() {
 
   async function doUpload(e: React.FormEvent) {
     e.preventDefault();
-    if (!file || !pub || !client || !campaign || !date) return;
+    if (!file || !pub || !client || !campaign) return;
     setStatus('Uploading...');
     const form = new FormData();
     form.set('publication', pub);
     form.set('client', client);
     form.set('campaign', campaign);
-    form.set('date', date);
     form.set('file', file);
     const res = await fetch('/api/upload', { method: 'POST', body: form });
     if (res.ok) setStatus('Uploaded successfully.'); else setStatus('Upload failed.');
@@ -98,7 +96,7 @@ return (
 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
   <div className="text-sm text-blue-800">
     <strong>📁 Files will be organized in Google Drive:</strong><br/>
-    {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'} → Client → Campaign → Date
+    {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'} → Client → Campaign → Publication
   </div>
 </div>
 
@@ -125,10 +123,6 @@ return (
 </select>
 </div>
 <div>
-<label className="label">Date</label>
-<input className="input" type="date" value={date} onChange={(e)=>setDate(e.target.value)} />
-</div>
-<div>
 <label className="label">File</label>
 <input className="input" type="file" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
 </div>
@@ -151,8 +145,8 @@ return (
     📁 {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'}<br/>
     &nbsp;&nbsp;📁 {client || 'Client'}<br/>
     &nbsp;&nbsp;&nbsp;&nbsp;📁 {campaign || 'Campaign'}<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {date || 'YYYY-MM-DD'}<br/>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 {pub ? `${pub}_${file?.name || 'filename.pdf'}` : 'Publication_filename.pdf'}
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {pub || 'Publication'}<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 {pub ? `${pub}_${new Date().toISOString().split('T')[0]}_${file?.name || 'filename.pdf'}` : 'Publication_YYYY-MM-DD_filename.pdf'}
   </div>
 </div>
 </div>
