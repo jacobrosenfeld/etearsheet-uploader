@@ -1,13 +1,52 @@
 'use client';
-form.set('campaign', campaign);
-form.set('date', date);
-form.set('file', file);
-const res = await fetch('/api/upload', { method: 'POST', body: form });
-if (res.ok) setStatus('Uploaded successfully.'); else setStatus('Upload failed.');
-}
+import { useState, useEffect } from 'react';
 
+type PortalConfig = {
+  clients: string[];
+  campaigns: string[];
+  publications: string[];
+};
 
-if (auth === 'needs-auth') {
+export default function HomePage() {
+  const [auth, setAuth] = useState<'needs-auth' | 'ready' | 'loading'>('loading');
+  const [cfg, setCfg] = useState<PortalConfig | null>(null);
+  const [pub, setPub] = useState('');
+  const [client, setClient] = useState('');
+  const [campaign, setCampaign] = useState('');
+  const [date, setDate] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    fetch('/api/config').then(res => res.json()).then(data => {
+      if (data.error) {
+        if (data.error.includes('Not authenticated')) {
+          setAuth('needs-auth');
+        } else {
+          setStatus('Error: ' + data.error);
+        }
+      } else {
+        setCfg(data);
+        setAuth('ready');
+      }
+    }).catch(() => setAuth('needs-auth'));
+  }, []);
+
+  async function doUpload(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file || !pub || !client || !campaign || !date) return;
+    setStatus('Uploading...');
+    const form = new FormData();
+    form.set('publication', pub);
+    form.set('client', client);
+    form.set('campaign', campaign);
+    form.set('date', date);
+    form.set('file', file);
+    const res = await fetch('/api/upload', { method: 'POST', body: form });
+    if (res.ok) setStatus('Uploaded successfully.'); else setStatus('Upload failed.');
+  }
+
+  if (auth === 'needs-auth') {
 return (
 <div className="card">
 <p className="mb-3">Connect your Google Drive to proceed.</p>
