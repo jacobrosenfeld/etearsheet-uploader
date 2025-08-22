@@ -9,14 +9,14 @@ return (
 		<link rel="icon" href="/favicon.svg" />
 		<link rel="icon" href="/favicon-light.svg" media="(prefers-color-scheme: light)" />
 		<link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
-		<meta name="description" content="Joseph Jacobs Advertising (JJA) - eTearsheet upload portal for publications to submit ad tear sheets." />
+		<meta name="description" content="JJA - eTearsheet upload portal for publications to submit ad tear sheets." />
 	</head>
 <body className="min-h-screen">
 <div className="max-w-4xl mx-auto p-6 space-y-6">
 <header className="flex items-center justify-between">
 <div className="flex items-center gap-3">
 	<img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
-	<h1 className="text-2xl font-bold">Joseph Jacobs Advertising (JJA) - eTearsheet Upload Portal</h1>
+	<h1 className="text-2xl font-bold">Joseph Jacobs Advertising - eTearsheet Upload Portal</h1>
 </div>
 <nav className="flex gap-3">
 <a className="btn" href="/">Upload</a>
@@ -32,7 +32,7 @@ return (
 			<a href="/privacy" className="underline">Privacy</a>
 		</div>
 		<div className="text-gray-700">Made with <span aria-hidden>❤️</span> in Teaneck, NJ</div>
-		<div className="text-gray-600">© {new Date().getFullYear()} Joseph Jacobs Advertising</div>
+		<div className="text-gray-600">© {new Date().getFullYear()}  Advertising</div>
 		<div>
 			<a className="btn" href="mailto:admin@josephjacobs.org">Contact Support</a>
 		</div>
