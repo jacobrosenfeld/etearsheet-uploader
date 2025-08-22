@@ -3,7 +3,7 @@ import { google } from 'googleapis';
 export async function driveClient() {
   // Implementation would get OAuth tokens from session/cookies
   // For now, returning null to indicate not authenticated
-  return null;
+  return null as any; // TypeScript workaround for placeholder
 }
 
 export async function getAuthUrl() {
