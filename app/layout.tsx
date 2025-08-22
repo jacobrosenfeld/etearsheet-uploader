@@ -6,6 +6,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 return (
 <html lang="en">
 	<head>
+		<title>JJA eTearsheet Uploader</title>
 		<link rel="icon" href="/favicon.svg" />
 		<link rel="icon" href="/favicon-light.svg" media="(prefers-color-scheme: light)" />
 		<link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
