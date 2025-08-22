@@ -1,10 +1,12 @@
 'use client';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Suspense } from 'react';
+import { Suspense, useState } from 'react';
 
 function LoginForm() {
   const params = useSearchParams();
   const router = useRouter();
+  const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const error = params.get('error');
 
   const getErrorMessage = (error: string | null) => {
@@ -13,6 +15,36 @@ function LoginForm() {
       case 'missing_password': return 'Please enter a password.';
       case 'server_error': return 'Server error. Please try again later.';
       default: return null;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!password.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    try {
+      const formData = new FormData();
+      formData.set('portal_password', password);
+      formData.set('from', params.get('from') || '/');
+      
+      const response = await fetch('/api/auth/init', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.redirected) {
+        window.location.href = response.url;
+      } else if (!response.ok) {
+        // Handle error response
+        router.push('/login?error=server_error');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      router.push('/login?error=server_error');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -26,12 +58,24 @@ function LoginForm() {
           </div>
         </div>
       )}
-      <form method="post" action="/api/auth/init" className="space-y-3">
-        <input type="hidden" name="from" value={params.get('from') || '/'} />
+      <form onSubmit={handleSubmit} className="space-y-3">
         <label className="label">Password</label>
-        <input className="input" name="portal_password" type="password" />
+        <input 
+          className="input" 
+          name="portal_password" 
+          type="password" 
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          disabled={isSubmitting}
+        />
         <div className="text-sm text-neutral-500">Use admin password for admin access.</div>
-        <button className="btn btn-primary" type="submit">Continue</button>
+        <button 
+          className="btn btn-primary" 
+          type="submit"
+          disabled={isSubmitting || !password.trim()}
+        >
+          {isSubmitting ? 'Logging in...' : 'Continue'}
+        </button>
       </form>
     </div>
   );
