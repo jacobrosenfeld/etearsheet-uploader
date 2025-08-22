@@ -1,11 +1,6 @@
 // lib/configStore.ts
 import { put, list, del } from '@vercel/blob';
-
-export type PortalConfig = {
-  clients: string[];
-  campaigns: string[];
-  publications: string[];
-};
+import { PortalConfig } from './types';
 
 const KEY = process.env.APP_CONFIG_BLOB_KEY || 'config/upload-portal-config.json';
 
