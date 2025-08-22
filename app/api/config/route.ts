@@ -20,10 +20,18 @@ export async function GET() {
     return NextResponse.json(json);
   } catch (e: any) {
     if (role === 'user') {
-      // Regular users get a helpful message when Google Drive isn't set up
+      // Regular users get a default empty config when Google Drive isn't set up yet
+      // This allows them to see the portal but with a warning that uploads won't work
       return NextResponse.json({ 
-        error: 'Portal not configured. Please contact an admin to set up Google Drive integration.' 
-      }, { status: 500 });
+        clients: [],
+        campaigns: [],
+        publications: [],
+        driveSettings: {
+          isConfigured: false,
+          rootFolderName: 'JJA eTearsheets',
+          rootFolderId: undefined
+        }
+      });
     }
     return NextResponse.json({ error: e?.message || 'Read failed' }, { status: 500 });
   }
