@@ -1,4 +1,4 @@
-Google Drive Upload Portal — Next.js (Vercel)
+JJA eTearsheet Upload Portal — Next.js (Vercel)
 
 This is a production-ready, password-protected upload portal with Google OAuth (Drive read/write) and an admin panel to manage lists of Clients, Campaigns, and Publications.
 
@@ -19,7 +19,7 @@ Project Structure
 │ │ ├─ config
 │ │ │ └─ route.ts
 │ │ └─ logout
-# Drive Upload Portal
+# JJA eTearsheet Portal
 
 A polished, lightweight upload portal built with Next.js and designed for deployment on Vercel. The portal lets authorized users upload files into a structured Google Drive folder hierarchy (Client → Campaign → Publication → Date) while keeping configuration in a blob stored via Vercel's blob API.
 
