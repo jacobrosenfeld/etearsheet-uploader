@@ -10,10 +10,21 @@ const ConfigSchema = z.object({
 });
 
 export async function GET() {
+  const role = await getRole();
+  if (!role) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
     const json = await readConfig();
     return NextResponse.json(json);
   } catch (e: any) {
+    if (role === 'user') {
+      // Regular users get a helpful message when Google Drive isn't set up
+      return NextResponse.json({ 
+        error: 'Portal not configured. Please contact an admin to set up Google Drive integration.' 
+      }, { status: 500 });
+    }
     return NextResponse.json({ error: e?.message || 'Read failed' }, { status: 500 });
   }
 }

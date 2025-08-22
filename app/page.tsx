@@ -8,7 +8,7 @@ type PortalConfig = {
 };
 
 export default function HomePage() {
-  const [auth, setAuth] = useState<'needs-auth' | 'ready' | 'loading'>('loading');
+  const [auth, setAuth] = useState<'needs-auth' | 'needs-setup' | 'ready' | 'loading'>('loading');
   const [cfg, setCfg] = useState<PortalConfig | null>(null);
   const [pub, setPub] = useState('');
   const [client, setClient] = useState('');
@@ -22,6 +22,10 @@ export default function HomePage() {
       if (data.error) {
         if (data.error.includes('Not authenticated')) {
           setAuth('needs-auth');
+        } else if (data.error.includes('Portal not configured')) {
+          // Regular user, portal not set up yet
+          setAuth('needs-setup');
+          setStatus(data.error);
         } else {
           setStatus('Error: ' + data.error);
         }
@@ -51,6 +55,16 @@ return (
 <div className="card">
 <p className="mb-3">Connect your Google Drive to proceed.</p>
 <form method="post" action="/api/auth/init"><button className="btn btn-primary">Connect Google Drive</button></form>
+</div>
+);
+}
+
+  if (auth === 'needs-setup') {
+return (
+<div className="card">
+<h2 className="text-xl font-semibold mb-4">Portal Setup Required</h2>
+<p className="mb-3">{status}</p>
+<p className="text-sm text-neutral-600">You are logged in as a regular user. An admin needs to authenticate with Google Drive and configure the portal before uploads can be enabled.</p>
 </div>
 );
 }

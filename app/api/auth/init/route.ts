@@ -16,14 +16,14 @@ if (!pw) return NextResponse.redirect(new URL('/login', req.url));
 
 if (pw === adminPw) {
 await setRole('admin');
+// Only admin users authenticate with Google Drive
+const authUrl = await getAuthUrl();
+return NextResponse.redirect(authUrl);
 } else if (pw === userPw) {
 await setRole('user');
+// Regular users go directly to the portal (no Google auth)
+return NextResponse.redirect(new URL(from, req.url));
 } else {
 return NextResponse.redirect(new URL('/login?error=badpass', req.url));
 }
-
-
-const authUrl = await getAuthUrl();
-// After password, go connect Google immediately
-return NextResponse.redirect(authUrl);
 }

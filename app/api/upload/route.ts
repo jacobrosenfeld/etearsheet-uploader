@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadIntoPath } from '@/lib/google';
+import { getRole } from '@/lib/sessions';
 
 
 export async function POST(req: NextRequest) {
+// Check if user is authenticated and has admin role (since they need Google Drive access)
+const role = await getRole();
+if (!role) {
+return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+}
+if (role !== 'admin') {
+return NextResponse.json({ error: 'Upload requires admin access to Google Drive' }, { status: 403 });
+}
+
 try {
 const form = await req.formData();
 const publication = form.get('publication')?.toString()!;
