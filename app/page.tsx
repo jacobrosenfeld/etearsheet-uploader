@@ -5,6 +5,11 @@ type PortalConfig = {
   clients: string[];
   campaigns: string[];
   publications: string[];
+  driveSettings?: {
+    rootFolderId?: string;
+    rootFolderName?: string;
+    isConfigured?: boolean;
+  };
 };
 
 export default function HomePage() {
@@ -72,10 +77,32 @@ return (
 
 if (!cfg) return <div className="card">Loading…</div>;
 
+// Check if Drive is configured
+const driveConfigured = cfg.driveSettings?.isConfigured;
+if (!driveConfigured) {
+  return (
+    <div className="card">
+      <h2 className="text-xl font-semibold mb-4">Google Drive Setup Required</h2>
+      <p className="mb-3">This portal requires Google Drive to be configured by an admin before uploads can be processed.</p>
+      <p className="text-sm text-neutral-600">Please contact your administrator to complete the Google Drive setup.</p>
+    </div>
+  );
+}
+
 
 return (
+<div className="space-y-6">
 <div className="card space-y-4">
 <h2 className="text-xl font-semibold">Upload a File</h2>
+
+{/* Drive folder info */}
+<div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+  <div className="text-sm text-blue-800">
+    <strong>📁 Files will be organized in Google Drive:</strong><br/>
+    {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'} → Client → Campaign → Date
+  </div>
+</div>
+
 <form onSubmit={doUpload} className="grid gap-4">
 <div>
 <label className="label">Publication</label>
@@ -109,7 +136,19 @@ return (
 <button className="btn btn-primary" type="submit">Upload</button>
 </form>
 {status && <div className="text-sm text-neutral-600">{status}</div>}
-<div className="text-xs text-neutral-500">Folder path will be: <strong>{client || 'Client'}</strong> / <strong>{campaign || 'Campaign'}</strong> / <strong>{pub || 'Publication'}</strong> / <strong>{date || 'YYYY-MM-DD'}</strong></div>
+</div>
+
+{/* Upload preview */}
+<div className="card">
+  <h3 className="text-lg font-semibold mb-2">Folder Structure Preview</h3>
+  <div className="text-xs text-neutral-500 font-mono bg-gray-50 p-3 rounded">
+    📁 {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'}<br/>
+    &nbsp;&nbsp;📁 {client || 'Client'}<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;📁 {campaign || 'Campaign'}<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {date || 'YYYY-MM-DD'}<br/>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 {pub ? `${pub}_${file?.name || 'filename.pdf'}` : 'Publication_filename.pdf'}
+  </div>
+</div>
 </div>
 );
 }

@@ -4,13 +4,10 @@ import { getRole } from '@/lib/sessions';
 
 
 export async function POST(req: NextRequest) {
-// Check if user is authenticated and has admin role (since they need Google Drive access)
+// Check if user is authenticated (both admin and regular users can upload now)
 const role = await getRole();
 if (!role) {
 return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-}
-if (role !== 'admin') {
-return NextResponse.json({ error: 'Upload requires admin access to Google Drive' }, { status: 403 });
 }
 
 try {

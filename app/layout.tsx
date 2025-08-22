@@ -30,10 +30,10 @@ return (
 <footer className="mt-8 border-t pt-4 text-sm text-center">
 	<div className="flex flex-col sm:flex-row items-center justify-between gap-2">
 		<div>
-			<a href="/privacy" className="underline">Privacy</a>
+			<a href="/privacy" className="underline">Privacy Policy</a>
 		</div>
 		<div className="text-gray-700">Made with <span aria-hidden>❤️</span> in Teaneck, NJ</div>
-		<div className="text-gray-600">© {new Date().getFullYear()}  Advertising</div>
+		<div className="text-gray-600">© {new Date().getFullYear()} JJA</div>
 		<div>
 			<a className="btn" href="mailto:admin@josephjacobs.org">Contact Support</a>
 		</div>

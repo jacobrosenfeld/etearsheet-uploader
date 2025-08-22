@@ -1,7 +1,16 @@
 'use client';
 import { useEffect, useState } from 'react';
 
-type Config = { clients: string[]; campaigns: string[]; publications: string[] };
+type Config = { 
+  clients: string[]; 
+  campaigns: string[]; 
+  publications: string[];
+  driveSettings?: {
+    rootFolderId?: string;
+    rootFolderName?: string;
+    isConfigured?: boolean;
+  };
+};
 
 export default function AdminPage() {
   const [cfg, setCfg] = useState<Config|null>(null);
@@ -222,6 +231,42 @@ export default function AdminPage() {
       <Section title="Publications" keyName="publications" />
       <Section title="Clients" keyName="clients" />
       <Section title="Campaigns" keyName="campaigns" />
+
+      {/* Google Drive Setup Section */}
+      <div className="card">
+        <h3 className="text-lg font-semibold mb-3">Google Drive Setup</h3>
+        {cfg?.driveSettings?.isConfigured ? (
+          <div className="space-y-2">
+            <div className="text-green-600">✓ Google Drive is configured</div>
+            <div className="text-sm text-gray-600">
+              Upload folder: {cfg.driveSettings.rootFolderName || 'JJA eTearsheets'}
+            </div>
+            <button 
+              className="btn btn-red text-red-600 hover:bg-red-50"
+              onClick={async () => {
+                const next = { ...cfg, driveSettings: { isConfigured: false } };
+                setCfg(next);
+                await save(next);
+              }}
+            >
+              Disconnect Google Drive
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="text-amber-600">⚠ Google Drive not configured</div>
+            <div className="text-sm text-gray-600">
+              Configure Google Drive to enable file uploads. This will create a folder structure: Client → Campaign → Date
+            </div>
+            <button 
+              className="btn btn-primary"
+              onClick={() => window.location.href = '/api/auth/init?admin=true'}
+            >
+              Setup Google Drive
+            </button>
+          </div>
+        )}
+      </div>
       
       <div className="text-sm text-gray-600">
         <p>• Add items using the "Add" buttons above</p>
