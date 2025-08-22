@@ -215,13 +215,7 @@ export default function AdminPage() {
         <div className="flex gap-2 items-center">
           {error && <div className="text-red-600 text-sm">{error}</div>}
           {success && <div className="text-green-600 text-sm">{success}</div>}
-          <button 
-            className="btn btn-primary" 
-            onClick={save} 
-            disabled={saving}
-          >
-            {saving ? 'Saving…' : 'Save Changes'}
-          </button>
+          {saving && <div className="text-blue-600 text-sm">Saving...</div>}
         </div>
       </div>
       
@@ -232,7 +226,7 @@ export default function AdminPage() {
       <div className="text-sm text-gray-600">
         <p>• Add items using the "Add" buttons above</p>
         <p>• Press Enter to quickly add an item, Escape to cancel</p>
-        <p>• Remember to click "Save Changes" after making modifications</p>
+        <p>• Changes are saved automatically when you add, edit, or remove items</p>
       </div>
     </div>
   );
