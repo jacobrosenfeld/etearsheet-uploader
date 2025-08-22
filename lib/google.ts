@@ -19,9 +19,10 @@ export async function getAuthUrl() {
   });
 }
 
-export async function storeTokens(code: string) {
-  // Implementation would store OAuth tokens
+export async function storeTokens(tokens: any) {
+  // Implementation would store OAuth tokens in session/cookies
   // For now, just a placeholder
+  console.log('Storing tokens:', tokens);
 }
 
 async function ensureConfigFile(): Promise<string> {
