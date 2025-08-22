@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { clearSession } from '@/lib/sessions';
 
 
-export async function POST() {
+export async function POST(request: NextRequest) {
 await clearSession();
-return NextResponse.redirect(new URL('/login', process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'));
+// Use the request URL to build a proper redirect
+const url = new URL('/login', request.url);
+return NextResponse.redirect(url);
 }
