@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUrl } from '@/lib/google';
-import { setRole } from '@/lib/session';
+import { setRole } from '@/lib/sessions';
 
 
 export async function POST(req: NextRequest) {

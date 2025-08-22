@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readConfig, writeConfig } from '@/lib/configStore';
 import { z } from 'zod';
-import { getRole } from '@/lib/session';
+import { getRole } from '@/lib/sessions';
 
 const ConfigSchema = z.object({
   clients: z.array(z.string()),
