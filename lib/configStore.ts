@@ -48,7 +48,7 @@ export async function readConfig(): Promise<PortalConfig> {
 export async function writeConfig(nextCfg: PortalConfig): Promise<void> {
   const body = JSON.stringify(nextCfg, null, 2);
   await put(KEY, body, {
-    access: 'private',
+    access: 'public',
     contentType: 'application/json',
   });
 }
