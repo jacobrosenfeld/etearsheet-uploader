@@ -30,7 +30,7 @@ try {
     driveSettings: {
       isConfigured: true,
       rootFolderName: 'JJA eTearsheets',
-      rootFolderId: null // Will be created on first upload
+      rootFolderId: undefined // Will be created on first upload
     }
   };
   await writeConfig(updatedConfig);
