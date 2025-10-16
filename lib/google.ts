@@ -1,5 +1,6 @@
 import { google } from 'googleapis';
 import { readConfig, writeConfig } from './configStore';
+import { Readable } from 'stream';
 
 // Initialize Google Drive client with Service Account
 function getDriveClient() {
@@ -100,6 +101,9 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
   const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
   const filename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
 
+  // Convert buffer to readable stream
+  const stream = Readable.from(buf);
+
   const created = await drive.files.create({
     requestBody: { 
       name: filename, 
@@ -107,7 +111,7 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
     },
     media: { 
       mimeType: opts.file.type || 'application/octet-stream', 
-      body: buf 
+      body: stream 
     }
   });
   
