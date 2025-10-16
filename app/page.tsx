@@ -65,7 +65,7 @@ export default function HomePage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="text-sm text-blue-800">
             <strong>📁 Files will be organized in Google Drive:</strong><br/>
-            JJA eTearsheets → Client → Campaign → Publication
+            {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'} → Client → Campaign → Publication
           </div>
         </div>
 
@@ -128,7 +128,7 @@ export default function HomePage() {
       <div className="card">
         <h3 className="text-lg font-semibold mb-2">Folder Structure Preview</h3>
         <div className="text-xs text-neutral-500 font-mono bg-gray-50 p-3 rounded">
-          📁 JJA eTearsheets<br/>
+          📁 {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'}<br/>
           &nbsp;&nbsp;📁 {client || 'Client'}<br/>
           &nbsp;&nbsp;&nbsp;&nbsp;📁 {campaign || 'Campaign'}<br/>
           &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {pub || 'Publication'}<br/>

@@ -2,6 +2,17 @@ import { google } from 'googleapis';
 import { readConfig, writeConfig } from './configStore';
 import { Readable } from 'stream';
 
+// Extract folder ID from Google Drive URL
+function extractFolderIdFromUrl(url: string): string | null {
+  if (!url) return null;
+  
+  // Match patterns like:
+  // https://drive.google.com/drive/folders/FOLDER_ID
+  // https://drive.google.com/drive/u/0/folders/FOLDER_ID
+  const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : null;
+}
+
 // Initialize Google Drive client with Service Account and Domain-Wide Delegation
 function getDriveClient() {
   // Parse service account credentials from environment variable
@@ -67,6 +78,45 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
   
   // Get or create root folder
   let rootFolderId = config.driveSettings?.rootFolderId;
+  let rootFolderName = config.driveSettings?.rootFolderName || 'JJA eTearsheets';
+  
+  // Check if there's a custom parent folder URL
+  if (config.driveSettings?.parentFolderUrl) {
+    const customFolderId = extractFolderIdFromUrl(config.driveSettings.parentFolderUrl);
+    if (customFolderId) {
+      // Verify the folder exists and get its name
+      const drive = getDriveClient();
+      try {
+        const folderInfo = await drive.files.get({
+          fileId: customFolderId,
+          fields: 'id, name'
+        });
+        
+        if (folderInfo.data.id) {
+          rootFolderId = folderInfo.data.id;
+          rootFolderName = folderInfo.data.name || rootFolderName;
+          
+          // Update config with custom folder info
+          const updatedConfig = {
+            ...config,
+            driveSettings: {
+              ...config.driveSettings,
+              rootFolderId,
+              rootFolderName,
+              isConfigured: true
+            }
+          };
+          await writeConfig(updatedConfig);
+        }
+      } catch (error) {
+        console.error('Error accessing custom parent folder:', error);
+        // Fall back to creating default folder
+        rootFolderId = undefined;
+      }
+    }
+  }
+  
+  // If no custom folder or it failed, use default
   if (!rootFolderId) {
     rootFolderId = await findOrCreateFolder('JJA eTearsheets');
     

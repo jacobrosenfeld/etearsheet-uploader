@@ -5,10 +5,21 @@ type PortalConfig = {
   clients: string[];
   campaigns: string[];
   publications: string[];
+  driveSettings?: {
+    rootFolderId?: string;
+    rootFolderName?: string;
+    isConfigured?: boolean;
+    parentFolderUrl?: string;
+  };
 };
 
 export default function AdminPage() {
-  const [cfg, setCfg] = useState<PortalConfig>({ clients: [], campaigns: [], publications: [] });
+  const [cfg, setCfg] = useState<PortalConfig>({ 
+    clients: [], 
+    campaigns: [], 
+    publications: [],
+    driveSettings: {}
+  });
   const [status, setStatus] = useState('');
 
   useEffect(() => {
@@ -19,7 +30,8 @@ export default function AdminPage() {
           setCfg({
             clients: data.clients || [],
             campaigns: data.campaigns || [],
-            publications: data.publications || []
+            publications: data.publications || [],
+            driveSettings: data.driveSettings || {}
           });
         }
       });
@@ -99,6 +111,39 @@ export default function AdminPage() {
                   <button className="text-red-600" onClick={() => removeItem('publications', i)}>Remove</button>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Google Drive Parent Folder Configuration */}
+          <div className="pt-4 border-t">
+            <h3 className="text-lg font-semibold mb-2">Google Drive Settings</h3>
+            <div className="space-y-3">
+              <div>
+                <label className="label text-sm font-medium text-gray-700">
+                  Parent Folder URL (optional)
+                </label>
+                <input
+                  type="text"
+                  className="input w-full"
+                  placeholder="https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
+                  value={cfg.driveSettings?.parentFolderUrl || ''}
+                  onChange={(e) => setCfg({
+                    ...cfg,
+                    driveSettings: {
+                      ...cfg.driveSettings,
+                      parentFolderUrl: e.target.value
+                    }
+                  })}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use "JJA eTearsheets" in your root Drive.
+                </p>
+                {cfg.driveSettings?.rootFolderName && (
+                  <p className="text-xs text-green-600 mt-1">
+                    ✓ Current parent folder: <strong>{cfg.driveSettings.rootFolderName}</strong>
+                  </p>
+                )}
+              </div>
             </div>
           </div>
 
