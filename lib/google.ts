@@ -98,11 +98,35 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
       // Verify the folder exists and get its name
       const drive = getDriveClient();
       try {
-        const folderInfo = await drive.files.get({
-          fileId: customFolderId,
-          fields: 'id, name, mimeType',
-          supportsAllDrives: true
-        });
+        // First, try to get the folder with full shared drive support
+        let folderInfo;
+        try {
+          folderInfo = await drive.files.get({
+            fileId: customFolderId,
+            fields: 'id, name, mimeType, driveId',
+            supportsAllDrives: true
+          });
+          console.log('[ensureFolderPath] Folder found:', folderInfo.data);
+          if (folderInfo.data.driveId) {
+            console.log('[ensureFolderPath] This is a Shared Drive folder. DriveId:', folderInfo.data.driveId);
+          }
+        } catch (firstError: any) {
+          // If first attempt fails, try with explicit shared drive context
+          console.log('[ensureFolderPath] First attempt failed, trying with shared drive context...');
+          const sharedDriveId = process.env.GOOGLE_SHARED_DRIVE_ID;
+          if (sharedDriveId) {
+            folderInfo = await drive.files.get({
+              fileId: customFolderId,
+              fields: 'id, name, mimeType, driveId',
+              supportsAllDrives: true,
+              // @ts-ignore - driveId is valid but not in types
+              driveId: sharedDriveId
+            });
+            console.log('[ensureFolderPath] Found with shared drive ID:', sharedDriveId);
+          } else {
+            throw firstError;
+          }
+        }
         
         // Verify it's actually a folder
         if (folderInfo.data.mimeType !== 'application/vnd.google-apps.folder') {
@@ -133,9 +157,13 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
         console.error('[ensureFolderPath] Error accessing custom parent folder:', error);
         // If it's a 404, the service account doesn't have access to the folder
         if (error?.code === 404 || error?.status === 404) {
-          console.error('[ensureFolderPath] IMPORTANT: The service account does not have access to this folder.');
-          console.error('[ensureFolderPath] Please share the Google Drive folder with:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
-          console.error('[ensureFolderPath] Give it "Editor" permissions.');
+          console.error('[ensureFolderPath] Folder not found even though shared — possible Shared Drive mismatch.');
+          console.error('[ensureFolderPath] Folder ID:', customFolderId);
+          console.error('[ensureFolderPath] Service account email:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+          console.error('[ensureFolderPath] If this is a Shared Drive folder, make sure:');
+          console.error('[ensureFolderPath]   1. The folder is shared with the service account');
+          console.error('[ensureFolderPath]   2. GOOGLE_SHARED_DRIVE_ID is set (if needed)');
+          console.error('[ensureFolderPath]   3. The service account has domain-wide delegation enabled');
         }
         // Fall back to creating default folder
         rootFolderId = undefined;

@@ -21,6 +21,8 @@ export default function AdminPage() {
     driveSettings: {}
   });
   const [status, setStatus] = useState('');
+  const [verifyStatus, setVerifyStatus] = useState<any>(null);
+  const [verifying, setVerifying] = useState(false);
 
   useEffect(() => {
     fetch('/api/config')
@@ -72,6 +74,40 @@ export default function AdminPage() {
 
   function removeItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
     setCfg({ ...cfg, [type]: cfg[type].filter((_, i) => i !== index) });
+  }
+
+  async function verifyFolderAccess() {
+    const folderUrl = cfg.driveSettings?.parentFolderUrl;
+    if (!folderUrl) {
+      alert('Please enter a folder URL first');
+      return;
+    }
+
+    // Extract folder ID from URL
+    const match = folderUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+    const folderId = match ? match[1] : null;
+    
+    if (!folderId) {
+      alert('Invalid folder URL format');
+      return;
+    }
+
+    setVerifying(true);
+    setVerifyStatus(null);
+
+    try {
+      const res = await fetch(`/api/verify-folder?id=${folderId}`);
+      const data = await res.json();
+      setVerifyStatus(data);
+    } catch (error) {
+      setVerifyStatus({
+        success: false,
+        error: 'Failed to verify folder access',
+        message: '❌ Verification failed'
+      });
+    } finally {
+      setVerifying(false);
+    }
   }
 
   return (
@@ -165,6 +201,50 @@ export default function AdminPage() {
                   <p className="text-xs text-green-600 mt-1">
                     ✓ Current parent folder: <strong>{cfg.driveSettings.rootFolderName}</strong>
                   </p>
+                )}
+                
+                {/* Verify Folder Access Button */}
+                <button
+                  type="button"
+                  className="mt-3 btn btn-secondary text-sm"
+                  onClick={verifyFolderAccess}
+                  disabled={verifying || !cfg.driveSettings?.parentFolderUrl}
+                >
+                  {verifying ? 'Verifying...' : '🔍 Verify Folder Access'}
+                </button>
+
+                {/* Verification Results */}
+                {verifyStatus && (
+                  <div className={`mt-3 p-3 rounded text-xs ${
+                    verifyStatus.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  }`}>
+                    <p className={`font-semibold mb-2 ${verifyStatus.success ? 'text-green-800' : 'text-red-800'}`}>
+                      {verifyStatus.message}
+                    </p>
+                    {verifyStatus.success && verifyStatus.folder && (
+                      <div className="text-gray-700 space-y-1">
+                        <p><strong>Folder Name:</strong> {verifyStatus.folder.name}</p>
+                        <p><strong>Folder ID:</strong> {verifyStatus.folder.id}</p>
+                        {verifyStatus.folder.isSharedDrive && (
+                          <p className="text-blue-700"><strong>Type:</strong> Shared Drive (DriveId: {verifyStatus.folder.driveId})</p>
+                        )}
+                        {!verifyStatus.folder.isSharedDrive && (
+                          <p><strong>Type:</strong> My Drive</p>
+                        )}
+                        <p><strong>Method:</strong> {verifyStatus.method}</p>
+                      </div>
+                    )}
+                    {verifyStatus.recommendations && verifyStatus.recommendations.length > 0 && (
+                      <div className="mt-2">
+                        <p className="font-semibold text-yellow-800 mb-1">Recommendations:</p>
+                        <ul className="list-disc list-inside text-yellow-700 space-y-1">
+                          {verifyStatus.recommendations.map((rec: string, i: number) => (
+                            <li key={i}>{rec}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
