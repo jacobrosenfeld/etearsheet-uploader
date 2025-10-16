@@ -6,11 +6,16 @@ import { Readable } from 'stream';
 function extractFolderIdFromUrl(url: string): string | null {
   if (!url) return null;
   
+  console.log('[extractFolderIdFromUrl] Input URL:', url);
+  
   // Match patterns like:
   // https://drive.google.com/drive/folders/FOLDER_ID
   // https://drive.google.com/drive/u/0/folders/FOLDER_ID
   const match = url.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-  return match ? match[1] : null;
+  const folderId = match ? match[1] : null;
+  
+  console.log('[extractFolderIdFromUrl] Extracted ID:', folderId);
+  return folderId;
 }
 
 // Initialize Google Drive client with Service Account and Domain-Wide Delegation
@@ -76,12 +81,16 @@ async function findOrCreateFolder(name: string, parentId?: string): Promise<stri
 async function ensureFolderPath(opts: { client: string; campaign: string; publication: string }): Promise<string> {
   const config = await readConfig();
   
+  console.log('[ensureFolderPath] Config loaded:', JSON.stringify(config.driveSettings, null, 2));
+  
   let rootFolderId: string | undefined;
   let rootFolderName = 'JJA eTearsheets';
   
   // Check if there's a custom parent folder URL
   if (config.driveSettings?.parentFolderUrl) {
+    console.log('[ensureFolderPath] Found parentFolderUrl:', config.driveSettings.parentFolderUrl);
     const customFolderId = extractFolderIdFromUrl(config.driveSettings.parentFolderUrl);
+    console.log('[ensureFolderPath] Extracted folder ID:', customFolderId);
     if (customFolderId) {
       // Verify the folder exists and get its name
       const drive = getDriveClient();
@@ -95,6 +104,8 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
           rootFolderId = folderInfo.data.id;
           rootFolderName = folderInfo.data.name || rootFolderName;
           
+          console.log('[ensureFolderPath] Custom folder verified:', rootFolderName, rootFolderId);
+          
           // Update config with custom folder info
           const updatedConfig = {
             ...config,
@@ -106,9 +117,10 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
             }
           };
           await writeConfig(updatedConfig);
+          console.log('[ensureFolderPath] Config updated with custom folder');
         }
       } catch (error) {
-        console.error('Error accessing custom parent folder:', error);
+        console.error('[ensureFolderPath] Error accessing custom parent folder:', error);
         // Fall back to creating default folder
         rootFolderId = undefined;
       }
@@ -123,6 +135,7 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
   
   // If still no root folder, create default
   if (!rootFolderId) {
+    console.log('[ensureFolderPath] No custom folder, creating default');
     rootFolderId = await findOrCreateFolder('JJA eTearsheets');
     
     // Update config with root folder ID
@@ -137,6 +150,8 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
     };
     await writeConfig(updatedConfig);
   }
+
+  console.log('[ensureFolderPath] Using root folder:', rootFolderName, rootFolderId);
 
   // Create folder hierarchy: Client → Campaign → Publication
   const clientFolderId = await findOrCreateFolder(opts.client, rootFolderId);

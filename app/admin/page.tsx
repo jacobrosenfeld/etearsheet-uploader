@@ -46,6 +46,17 @@ export default function AdminPage() {
     });
     if (res.ok) {
       setStatus('Saved!');
+      // Reload config after saving to get updated values
+      const reloadRes = await fetch('/api/config');
+      const reloadData = await reloadRes.json();
+      if (!reloadData.error) {
+        setCfg({
+          clients: reloadData.clients || [],
+          campaigns: reloadData.campaigns || [],
+          publications: reloadData.publications || [],
+          driveSettings: reloadData.driveSettings || {}
+        });
+      }
       setTimeout(() => setStatus(''), 2000);
     } else {
       setStatus('Save failed');
