@@ -2,10 +2,7 @@
 import { useState, useEffect } from 'react';
 
 type PortalConfig = {
-  clie            <select className="input" value={campaign} onChange={(e)=>setCampaign(e.target.value)}>
-              <option value="">Select campaign…</option>
-              {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-            </select> Array<{ name: string; hidden?: boolean }>;
+  clients: Array<{ name: string; hidden?: boolean }>;
   campaigns: Array<{ name: string; hidden?: boolean }>;
   publications: Array<{ name: string; hidden?: boolean }>;
   driveSettings?: {
