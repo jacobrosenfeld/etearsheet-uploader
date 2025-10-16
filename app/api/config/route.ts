@@ -4,9 +4,18 @@ import { getRole } from '@/lib/sessions';
 import { z } from 'zod';
 
 const ConfigSchema = z.object({
-  clients: z.array(z.string()),
-  campaigns: z.array(z.string()),
-  publications: z.array(z.string()),
+  clients: z.array(z.object({
+    name: z.string(),
+    hidden: z.boolean().optional()
+  })),
+  campaigns: z.array(z.object({
+    name: z.string(),
+    hidden: z.boolean().optional()
+  })),
+  publications: z.array(z.object({
+    name: z.string(),
+    hidden: z.boolean().optional()
+  })),
   driveSettings: z.object({
     rootFolderId: z.string().optional(),
     rootFolderName: z.string().optional(),

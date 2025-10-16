@@ -87,7 +87,8 @@ export default function AdminPage() {
   async function saveNewItem(type: 'clients' | 'campaigns' | 'publications') {
     if (!newItemValue.trim()) return;
     
-    const updatedCfg = { ...cfg, [type]: [...cfg[type], newItemValue.trim()] };
+    const newItem = { name: newItemValue.trim(), hidden: false };
+    const updatedCfg = { ...cfg, [type]: [...cfg[type], newItem] };
     setCfg(updatedCfg);
     
     // Save immediately to the backend
