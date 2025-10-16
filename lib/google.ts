@@ -76,9 +76,8 @@ async function findOrCreateFolder(name: string, parentId?: string): Promise<stri
 async function ensureFolderPath(opts: { client: string; campaign: string; publication: string }): Promise<string> {
   const config = await readConfig();
   
-  // Get or create root folder
-  let rootFolderId = config.driveSettings?.rootFolderId;
-  let rootFolderName = config.driveSettings?.rootFolderName || 'JJA eTearsheets';
+  let rootFolderId: string | undefined;
+  let rootFolderName = 'JJA eTearsheets';
   
   // Check if there's a custom parent folder URL
   if (config.driveSettings?.parentFolderUrl) {
@@ -116,7 +115,13 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
     }
   }
   
-  // If no custom folder or it failed, use default
+  // If no custom folder URL was provided, check if we have a cached rootFolderId
+  if (!rootFolderId && config.driveSettings?.rootFolderId) {
+    rootFolderId = config.driveSettings.rootFolderId;
+    rootFolderName = config.driveSettings.rootFolderName || rootFolderName;
+  }
+  
+  // If still no root folder, create default
   if (!rootFolderId) {
     rootFolderId = await findOrCreateFolder('JJA eTearsheets');
     
