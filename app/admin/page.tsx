@@ -175,18 +175,31 @@ export default function AdminPage() {
               {[...cfg.clients].sort((a, b) => a.name.localeCompare(b.name)).map((client, sortedIndex) => (
                 <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!client.hidden}
-                      onChange={(e) => {
+                    <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
                         const updatedClients = cfg.clients.map(c => 
-                          c.name === client.name ? { ...c, hidden: !e.target.checked } : c
+                          c.name === client.name ? { ...c, hidden: !c.hidden } : c
                         );
                         setCfg({ ...cfg, clients: updatedClients });
                       }}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
+                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                      title={client.hidden ? 'Show this client' : 'Hide this client'}
+                    >
+                      {client.hidden ? (
+                        // Eye with slash (hidden)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      ) : (
+                        // Eye (visible)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   <button className="text-red-600" onClick={() => removeItem('clients', cfg.clients.findIndex(c => c.name === client.name))}>Remove</button>
                 </div>
@@ -232,18 +245,31 @@ export default function AdminPage() {
               {[...cfg.campaigns].sort((a, b) => a.name.localeCompare(b.name)).map((campaign, sortedIndex) => (
                 <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!campaign.hidden}
-                      onChange={(e) => {
+                    <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
                         const updatedCampaigns = cfg.campaigns.map(c => 
-                          c.name === campaign.name ? { ...c, hidden: !e.target.checked } : c
+                          c.name === campaign.name ? { ...c, hidden: !c.hidden } : c
                         );
                         setCfg({ ...cfg, campaigns: updatedCampaigns });
                       }}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
+                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                      title={campaign.hidden ? 'Show this campaign' : 'Hide this campaign'}
+                    >
+                      {campaign.hidden ? (
+                        // Eye with slash (hidden)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      ) : (
+                        // Eye (visible)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   <button className="text-red-600" onClick={() => removeItem('campaigns', cfg.campaigns.findIndex(c => c.name === campaign.name))}>Remove</button>
                 </div>
@@ -289,18 +315,31 @@ export default function AdminPage() {
               {[...cfg.publications].sort((a, b) => a.name.localeCompare(b.name)).map((pub, sortedIndex) => (
                 <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <div className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={!pub.hidden}
-                      onChange={(e) => {
+                    <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
                         const updatedPublications = cfg.publications.map(p => 
-                          p.name === pub.name ? { ...p, hidden: !e.target.checked } : p
+                          p.name === pub.name ? { ...p, hidden: !p.hidden } : p
                         );
                         setCfg({ ...cfg, publications: updatedPublications });
                       }}
-                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-                    />
-                    <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
+                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                      title={pub.hidden ? 'Show this publication' : 'Hide this publication'}
+                    >
+                      {pub.hidden ? (
+                        // Eye with slash (hidden)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                        </svg>
+                      ) : (
+                        // Eye (visible)
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
                   </div>
                   <button className="text-red-600" onClick={() => removeItem('publications', cfg.publications.findIndex(p => p.name === pub.name))}>Remove</button>
                 </div>
