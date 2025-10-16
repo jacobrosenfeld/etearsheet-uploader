@@ -2,14 +2,19 @@ import { google } from 'googleapis';
 import { readConfig, writeConfig } from './configStore';
 import { Readable } from 'stream';
 
-// Initialize Google Drive client with Service Account
+// Initialize Google Drive client with Service Account and Domain-Wide Delegation
 function getDriveClient() {
   // Parse service account credentials from environment variable
   const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
   const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const impersonateUser = process.env.GOOGLE_IMPERSONATE_USER; // Email of user to impersonate
   
   if (!serviceAccountEmail || !serviceAccountKey) {
     throw new Error('Missing Google Service Account credentials. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY in environment variables.');
+  }
+
+  if (!impersonateUser) {
+    throw new Error('Missing GOOGLE_IMPERSONATE_USER environment variable. Set this to the email address of a user in your domain (e.g., admin@yourdomain.com).');
   }
 
   const auth = new google.auth.GoogleAuth({
@@ -18,6 +23,10 @@ function getDriveClient() {
       private_key: serviceAccountKey,
     },
     scopes: ['https://www.googleapis.com/auth/drive.file'],
+    // Impersonate a user to use their storage quota
+    clientOptions: {
+      subject: impersonateUser,
+    },
   });
 
   return google.drive({ version: 'v3', auth });
