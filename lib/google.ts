@@ -111,21 +111,9 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
             console.log('[ensureFolderPath] This is a Shared Drive folder. DriveId:', folderInfo.data.driveId);
           }
         } catch (firstError: any) {
-          // If first attempt fails, try with explicit shared drive context
-          console.log('[ensureFolderPath] First attempt failed, trying with shared drive context...');
-          const sharedDriveId = process.env.GOOGLE_SHARED_DRIVE_ID;
-          if (sharedDriveId) {
-            folderInfo = await drive.files.get({
-              fileId: customFolderId,
-              fields: 'id, name, mimeType, driveId',
-              supportsAllDrives: true,
-              // @ts-ignore - driveId is valid but not in types
-              driveId: sharedDriveId
-            });
-            console.log('[ensureFolderPath] Found with shared drive ID:', sharedDriveId);
-          } else {
-            throw firstError;
-          }
+          // If first attempt fails, log and throw
+          console.log('[ensureFolderPath] Could not access folder:', firstError.message);
+          throw firstError;
         }
         
         // Verify it's actually a folder

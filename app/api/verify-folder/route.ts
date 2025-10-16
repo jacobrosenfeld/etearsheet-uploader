@@ -43,10 +43,9 @@ export async function GET(req: NextRequest) {
   }
 
   const drive = getDriveClient();
-  const sharedDriveId = process.env.GOOGLE_SHARED_DRIVE_ID;
 
   try {
-    // First attempt: standard approach with supportsAllDrives
+    // Try to get the folder with supportsAllDrives
     let folderInfo;
     let method = 'standard';
     
@@ -58,25 +57,13 @@ export async function GET(req: NextRequest) {
       });
       method = 'supportsAllDrives';
     } catch (firstError: any) {
-      // If that fails and we have a shared drive ID, try with explicit driveId
-      if (sharedDriveId) {
-        folderInfo = await drive.files.get({
-          fileId: folderId,
-          fields: 'id, name, mimeType, driveId, parents, owners',
-          supportsAllDrives: true,
-          // @ts-ignore
-          driveId: sharedDriveId
-        });
-        method = 'explicitDriveId';
-      } else {
-        throw firstError;
-      }
+      // If that fails, we can't access the folder
+      throw firstError;
     }
 
     const data = folderInfo.data;
     const isFolder = data.mimeType === 'application/vnd.google-apps.folder';
     const isSharedDrive = !!data.driveId;
-    const driveIdMatches = !sharedDriveId || data.driveId === sharedDriveId;
 
     return NextResponse.json({
       success: true,
@@ -91,18 +78,11 @@ export async function GET(req: NextRequest) {
         parents: data.parents || [],
         owners: data.owners || []
       },
-      config: {
-        hasSharedDriveId: !!sharedDriveId,
-        configuredSharedDriveId: sharedDriveId || null,
-        driveIdMatches
-      },
       message: isFolder 
         ? `✅ Folder "${data.name}" is accessible` 
         : `⚠️ This is not a folder (${data.mimeType})`,
       recommendations: [
         ...(!isFolder ? ['The provided ID is not a folder'] : []),
-        ...(isSharedDrive && !sharedDriveId ? ['Consider setting GOOGLE_SHARED_DRIVE_ID=' + data.driveId] : []),
-        ...(sharedDriveId && !driveIdMatches ? ['The folder is in a different Shared Drive than configured'] : []),
       ]
     });
 
@@ -112,16 +92,12 @@ export async function GET(req: NextRequest) {
       error: error.message,
       code: error.code || error.status,
       folderId,
-      config: {
-        hasSharedDriveId: !!sharedDriveId,
-        configuredSharedDriveId: sharedDriveId || null,
-      },
       message: '❌ Could not access folder',
       recommendations: [
-        'Make sure the folder is shared with: ' + process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
+        'Make sure the folder is shared with the service account email',
         'Give the service account "Editor" permissions',
-        'If this is a Shared Drive folder, set GOOGLE_SHARED_DRIVE_ID',
-        'Verify domain-wide delegation is configured correctly'
+        'Verify domain-wide delegation is configured correctly',
+        'Check that the impersonated user has access to this folder'
       ]
     }, { status: 200 }); // Return 200 so we can show the error nicely in UI
   }
