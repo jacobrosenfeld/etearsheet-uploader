@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readConfig, writeConfig } from '@/lib/configStore';
+import { getRole } from '@/lib/sessions';
 import { z } from 'zod';
 
 const ConfigSchema = z.object({
@@ -9,6 +10,11 @@ const ConfigSchema = z.object({
 });
 
 export async function GET() {
+  const role = await getRole();
+  if (!role) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
     const json = await readConfig();
     return NextResponse.json(json);
@@ -28,6 +34,11 @@ export async function GET() {
 }
 
 export async function PUT(req: NextRequest) {
+  const role = await getRole();
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+  }
+
   const body = await req.json();
   const parsed = ConfigSchema.safeParse(body);
   if (!parsed.success) {

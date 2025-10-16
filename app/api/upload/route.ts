@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { uploadIntoPath } from '@/lib/google';
+import { getRole } from '@/lib/sessions';
 
 
 export async function POST(req: NextRequest) {
+  // Check if user is authenticated (both admin and regular users can upload)
+  const role = await getRole();
+  if (!role) {
+    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+  }
+
   try {
     const form = await req.formData();
     const publication = form.get('publication')?.toString()!;
