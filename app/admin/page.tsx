@@ -146,7 +146,19 @@ export default function AdminPage() {
                     }
                   })}
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
+                  <p className="font-semibold text-yellow-800 mb-1">⚠️ Important: Share the folder with the service account</p>
+                  <p className="text-yellow-700 mb-2">
+                    After pasting the folder URL, you must share that Google Drive folder with:
+                  </p>
+                  <code className="block bg-yellow-100 px-2 py-1 rounded text-yellow-900 break-all">
+                    {process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_EMAIL || 'your-service-account@project.iam.gserviceaccount.com'}
+                  </code>
+                  <p className="text-yellow-700 mt-2">
+                    Give it <strong>"Editor"</strong> permissions. Without this, uploads will fail.
+                  </p>
+                </div>
+                <p className="text-xs text-gray-500 mt-2">
                   📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use "JJA eTearsheets" in your root Drive.
                 </p>
                 {cfg.driveSettings?.rootFolderName && (

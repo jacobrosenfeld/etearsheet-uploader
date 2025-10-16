@@ -119,8 +119,14 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
           await writeConfig(updatedConfig);
           console.log('[ensureFolderPath] Config updated with custom folder');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('[ensureFolderPath] Error accessing custom parent folder:', error);
+        // If it's a 404, the service account doesn't have access to the folder
+        if (error?.code === 404 || error?.status === 404) {
+          console.error('[ensureFolderPath] IMPORTANT: The service account does not have access to this folder.');
+          console.error('[ensureFolderPath] Please share the Google Drive folder with:', process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL);
+          console.error('[ensureFolderPath] Give it "Editor" permissions.');
+        }
         // Fall back to creating default folder
         rootFolderId = undefined;
       }
