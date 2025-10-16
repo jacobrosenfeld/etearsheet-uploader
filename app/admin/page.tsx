@@ -23,6 +23,8 @@ export default function AdminPage() {
   const [status, setStatus] = useState('');
   const [verifyStatus, setVerifyStatus] = useState<any>(null);
   const [verifying, setVerifying] = useState(false);
+  const [addingItem, setAddingItem] = useState<'clients' | 'campaigns' | 'publications' | null>(null);
+  const [newItemValue, setNewItemValue] = useState('');
 
   useEffect(() => {
     fetch('/api/config')
@@ -72,8 +74,55 @@ export default function AdminPage() {
     }
   }
 
-  function removeItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
-    setCfg({ ...cfg, [type]: cfg[type].filter((_, i) => i !== index) });
+  function startAddingItem(type: 'clients' | 'campaigns' | 'publications') {
+    setAddingItem(type);
+    setNewItemValue('');
+  }
+
+  function cancelAddingItem() {
+    setAddingItem(null);
+    setNewItemValue('');
+  }
+
+  async function saveNewItem(type: 'clients' | 'campaigns' | 'publications') {
+    if (!newItemValue.trim()) return;
+    
+    const updatedCfg = { ...cfg, [type]: [...cfg[type], newItemValue.trim()] };
+    setCfg(updatedCfg);
+    
+    // Save immediately to the backend
+    const res = await fetch('/api/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedCfg)
+    });
+    
+    if (res.ok) {
+      setAddingItem(null);
+      setNewItemValue('');
+    } else {
+      // Revert on error
+      setCfg(cfg);
+      alert('Failed to save new item');
+    }
+  }
+
+  async function removeItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
+    const updatedCfg = { ...cfg, [type]: cfg[type].filter((_, i) => i !== index) };
+    setCfg(updatedCfg);
+    
+    // Save immediately to the backend
+    const res = await fetch('/api/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedCfg)
+    });
+    
+    if (!res.ok) {
+      // Revert on error
+      setCfg(cfg);
+      alert('Failed to remove item');
+    }
   }
 
   async function verifyFolderAccess() {
@@ -119,7 +168,7 @@ export default function AdminPage() {
           <div>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold">Clients</h3>
-              <button className="btn btn-primary" onClick={() => addItem('clients')}>+ Add</button>
+              <button className="btn btn-primary" onClick={() => startAddingItem('clients')}>+ Add</button>
             </div>
             <div className="space-y-2">
               {cfg.clients.map((client, i) => (
@@ -128,13 +177,42 @@ export default function AdminPage() {
                   <button className="text-red-600" onClick={() => removeItem('clients', i)}>Remove</button>
                 </div>
               ))}
+              {addingItem === 'clients' && (
+                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
+                  <input
+                    type="text"
+                    className="flex-1 px-2 py-1 border rounded"
+                    placeholder="Enter new client name"
+                    value={newItemValue}
+                    onChange={(e) => setNewItemValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveNewItem('clients');
+                      if (e.key === 'Escape') cancelAddingItem();
+                    }}
+                    autoFocus
+                  />
+                  <button 
+                    className="btn btn-primary text-sm px-3 py-1" 
+                    onClick={() => saveNewItem('clients')}
+                    disabled={!newItemValue.trim()}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    className="btn btn-secondary text-sm px-3 py-1" 
+                    onClick={cancelAddingItem}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold">Campaigns</h3>
-              <button className="btn btn-primary" onClick={() => addItem('campaigns')}>+ Add</button>
+              <button className="btn btn-primary" onClick={() => startAddingItem('campaigns')}>+ Add</button>
             </div>
             <div className="space-y-2">
               {cfg.campaigns.map((campaign, i) => (
@@ -143,13 +221,42 @@ export default function AdminPage() {
                   <button className="text-red-600" onClick={() => removeItem('campaigns', i)}>Remove</button>
                 </div>
               ))}
+              {addingItem === 'campaigns' && (
+                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
+                  <input
+                    type="text"
+                    className="flex-1 px-2 py-1 border rounded"
+                    placeholder="Enter new campaign name"
+                    value={newItemValue}
+                    onChange={(e) => setNewItemValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveNewItem('campaigns');
+                      if (e.key === 'Escape') cancelAddingItem();
+                    }}
+                    autoFocus
+                  />
+                  <button 
+                    className="btn btn-primary text-sm px-3 py-1" 
+                    onClick={() => saveNewItem('campaigns')}
+                    disabled={!newItemValue.trim()}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    className="btn btn-secondary text-sm px-3 py-1" 
+                    onClick={cancelAddingItem}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
           <div>
             <div className="flex justify-between items-center mb-2">
               <h3 className="text-lg font-semibold">Publications</h3>
-              <button className="btn btn-primary" onClick={() => addItem('publications')}>+ Add</button>
+              <button className="btn btn-primary" onClick={() => startAddingItem('publications')}>+ Add</button>
             </div>
             <div className="space-y-2">
               {cfg.publications.map((pub, i) => (
@@ -158,6 +265,35 @@ export default function AdminPage() {
                   <button className="text-red-600" onClick={() => removeItem('publications', i)}>Remove</button>
                 </div>
               ))}
+              {addingItem === 'publications' && (
+                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
+                  <input
+                    type="text"
+                    className="flex-1 px-2 py-1 border rounded"
+                    placeholder="Enter new publication name"
+                    value={newItemValue}
+                    onChange={(e) => setNewItemValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') saveNewItem('publications');
+                      if (e.key === 'Escape') cancelAddingItem();
+                    }}
+                    autoFocus
+                  />
+                  <button 
+                    className="btn btn-primary text-sm px-3 py-1" 
+                    onClick={() => saveNewItem('publications')}
+                    disabled={!newItemValue.trim()}
+                  >
+                    Save
+                  </button>
+                  <button 
+                    className="btn btn-secondary text-sm px-3 py-1" 
+                    onClick={cancelAddingItem}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
