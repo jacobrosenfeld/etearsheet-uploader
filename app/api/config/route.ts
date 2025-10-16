@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readConfig, writeConfig } from '@/lib/configStore';
 import { z } from 'zod';
-import { getRole } from '@/lib/sessions';
 
 const ConfigSchema = z.object({
   clients: z.array(z.string()),
@@ -10,37 +9,25 @@ const ConfigSchema = z.object({
 });
 
 export async function GET() {
-  const role = await getRole();
-  if (!role) {
-    return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-  }
-
   try {
     const json = await readConfig();
     return NextResponse.json(json);
   } catch (e: any) {
-    if (role === 'user') {
-      // Regular users get a default empty config when Google Drive isn't set up yet
-      // This allows them to see the portal but with a warning that uploads won't work
-      return NextResponse.json({ 
-        clients: [],
-        campaigns: [],
-        publications: [],
-        driveSettings: {
-          isConfigured: false,
-          rootFolderName: 'JJA eTearsheets',
-          rootFolderId: undefined
-        }
-      });
-    }
-    return NextResponse.json({ error: e?.message || 'Read failed' }, { status: 500 });
+    // Return default empty config if not set up yet
+    return NextResponse.json({ 
+      clients: [],
+      campaigns: [],
+      publications: [],
+      driveSettings: {
+        isConfigured: false,
+        rootFolderName: 'JJA eTearsheets',
+        rootFolderId: undefined
+      }
+    });
   }
 }
 
 export async function PUT(req: NextRequest) {
-  const role = await getRole();
-  if (role !== 'admin') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-
   const body = await req.json();
   const parsed = ConfigSchema.safeParse(body);
   if (!parsed.success) {
