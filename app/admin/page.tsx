@@ -41,7 +41,7 @@ export default function AdminPage() {
   }
 
   function addItem(type: 'clients' | 'campaigns' | 'publications') {
-    const value = prompt(\`Enter new \${type.slice(0, -1)}:\`);
+    const value = prompt(`Enter new ${type.slice(0, -1)}:`);
     if (value && value.trim()) {
       setCfg({ ...cfg, [type]: [...cfg[type], value.trim()] });
     }
