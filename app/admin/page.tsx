@@ -171,10 +171,10 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('clients')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {cfg.clients.map((client, i) => (
-                <div key={i} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+              {[...cfg.clients].sort().map((client, sortedIndex) => (
+                <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <span>{client}</span>
-                  <button className="text-red-600" onClick={() => removeItem('clients', i)}>Remove</button>
+                  <button className="text-red-600" onClick={() => removeItem('clients', cfg.clients.indexOf(client))}>Remove</button>
                 </div>
               ))}
               {addingItem === 'clients' && (
@@ -215,10 +215,10 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('campaigns')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {cfg.campaigns.map((campaign, i) => (
-                <div key={i} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+              {[...cfg.campaigns].sort().map((campaign, sortedIndex) => (
+                <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <span>{campaign}</span>
-                  <button className="text-red-600" onClick={() => removeItem('campaigns', i)}>Remove</button>
+                  <button className="text-red-600" onClick={() => removeItem('campaigns', cfg.campaigns.indexOf(campaign))}>Remove</button>
                 </div>
               ))}
               {addingItem === 'campaigns' && (
@@ -259,10 +259,10 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('publications')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {cfg.publications.map((pub, i) => (
-                <div key={i} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+              {[...cfg.publications].sort().map((pub, sortedIndex) => (
+                <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
                   <span>{pub}</span>
-                  <button className="text-red-600" onClick={() => removeItem('publications', i)}>Remove</button>
+                  <button className="text-red-600" onClick={() => removeItem('publications', cfg.publications.indexOf(pub))}>Remove</button>
                 </div>
               ))}
               {addingItem === 'publications' && (

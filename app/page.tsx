@@ -74,21 +74,21 @@ export default function HomePage() {
             <label className="label">Publication</label>
             <select className="input" value={pub} onChange={(e)=>setPub(e.target.value)}>
               <option value="">Select publication…</option>
-              {cfg.publications.map(p => <option key={p} value={p}>{p}</option>)}
+              {[...cfg.publications].sort().map(p => <option key={p} value={p}>{p}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Client</label>
             <select className="input" value={client} onChange={(e)=>setClient(e.target.value)}>
               <option value="">Select client…</option>
-              {cfg.clients.map(c => <option key={c} value={c}>{c}</option>)}
+              {[...cfg.clients].sort().map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Campaign</label>
             <select className="input" value={campaign} onChange={(e)=>setCampaign(e.target.value)}>
               <option value="">Select campaign…</option>
-              {cfg.campaigns.map(c => <option key={c} value={c}>{c}</option>)}
+              {[...cfg.campaigns].sort().map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
           <div>
