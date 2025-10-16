@@ -7,6 +7,12 @@ const ConfigSchema = z.object({
   clients: z.array(z.string()),
   campaigns: z.array(z.string()),
   publications: z.array(z.string()),
+  driveSettings: z.object({
+    rootFolderId: z.string().optional(),
+    rootFolderName: z.string().optional(),
+    isConfigured: z.boolean().optional(),
+    parentFolderUrl: z.string().optional(),
+  }).optional(),
 });
 
 export async function GET() {
