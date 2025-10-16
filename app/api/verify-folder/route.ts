@@ -20,7 +20,7 @@ function getDriveClient() {
       client_email: serviceAccountEmail,
       private_key: serviceAccountKey,
     },
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
+    scopes: ['https://www.googleapis.com/auth/drive'],
     clientOptions: {
       subject: impersonateUser,
     },

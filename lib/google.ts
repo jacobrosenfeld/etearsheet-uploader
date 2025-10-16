@@ -38,7 +38,7 @@ function getDriveClient() {
       client_email: serviceAccountEmail,
       private_key: serviceAccountKey,
     },
-    scopes: ['https://www.googleapis.com/auth/drive.file'],
+    scopes: ['https://www.googleapis.com/auth/drive'],
     // Impersonate a user to use their storage quota
     clientOptions: {
       subject: impersonateUser,
