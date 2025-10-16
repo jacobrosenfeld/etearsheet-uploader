@@ -177,12 +177,26 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         const updatedClients = cfg.clients.map(c => 
                           c.name === client.name ? { ...c, hidden: !c.hidden } : c
                         );
-                        setCfg({ ...cfg, clients: updatedClients });
+                        const newCfg = { ...cfg, clients: updatedClients };
+                        setCfg(newCfg);
+                        
+                        // Save immediately to the backend
+                        const res = await fetch('/api/config', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newCfg)
+                        });
+                        
+                        if (!res.ok) {
+                          // Revert on error
+                          setCfg(cfg);
+                          alert('Failed to update visibility');
+                        }
                       }}
                       className="text-gray-500 hover:text-gray-700 p-1 rounded"
                       title={client.hidden ? 'Show this client' : 'Hide this client'}
@@ -247,12 +261,26 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         const updatedCampaigns = cfg.campaigns.map(c => 
                           c.name === campaign.name ? { ...c, hidden: !c.hidden } : c
                         );
-                        setCfg({ ...cfg, campaigns: updatedCampaigns });
+                        const newCfg = { ...cfg, campaigns: updatedCampaigns };
+                        setCfg(newCfg);
+                        
+                        // Save immediately to the backend
+                        const res = await fetch('/api/config', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newCfg)
+                        });
+                        
+                        if (!res.ok) {
+                          // Revert on error
+                          setCfg(cfg);
+                          alert('Failed to update visibility');
+                        }
                       }}
                       className="text-gray-500 hover:text-gray-700 p-1 rounded"
                       title={campaign.hidden ? 'Show this campaign' : 'Hide this campaign'}
@@ -317,12 +345,26 @@ export default function AdminPage() {
                   <div className="flex items-center gap-2">
                     <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.preventDefault();
                         const updatedPublications = cfg.publications.map(p => 
                           p.name === pub.name ? { ...p, hidden: !p.hidden } : p
                         );
-                        setCfg({ ...cfg, publications: updatedPublications });
+                        const newCfg = { ...cfg, publications: updatedPublications };
+                        setCfg(newCfg);
+                        
+                        // Save immediately to the backend
+                        const res = await fetch('/api/config', {
+                          method: 'PUT',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(newCfg)
+                        });
+                        
+                        if (!res.ok) {
+                          // Revert on error
+                          setCfg(cfg);
+                          alert('Failed to update visibility');
+                        }
                       }}
                       className="text-gray-500 hover:text-gray-700 p-1 rounded"
                       title={pub.hidden ? 'Show this publication' : 'Hide this publication'}
@@ -428,6 +470,28 @@ export default function AdminPage() {
                   {verifying ? 'Verifying...' : '🔍 Verify Folder Access'}
                 </button>
 
+                {/* Save Drive Settings Button */}
+                <button
+                  type="button"
+                  className="mt-3 ml-2 btn btn-primary text-sm"
+                  onClick={async () => {
+                    setStatus('Saving drive settings...');
+                    const res = await fetch('/api/config', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(cfg)
+                    });
+                    if (res.ok) {
+                      setStatus('Drive settings saved!');
+                      setTimeout(() => setStatus(''), 2000);
+                    } else {
+                      setStatus('Save failed');
+                    }
+                  }}
+                >
+                  💾 Save Drive Settings
+                </button>
+
                 {/* Verification Results */}
                 {verifyStatus && (
                   <div className={`mt-3 p-3 rounded text-xs ${
@@ -465,10 +529,7 @@ export default function AdminPage() {
             </div>
           </div>
 
-          <div className="pt-4 border-t">
-            <button className="btn btn-primary w-full" onClick={saveConfig}>Save Configuration</button>
-            {status && <p className="text-sm text-center mt-2">{status}</p>}
-          </div>
+
         </div>
       </div>
     </div>
