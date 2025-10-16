@@ -44,12 +44,12 @@ export default function HomePage() {
     form.set('file', file);
     const res = await fetch('/api/upload', { method: 'POST', body: form });
     if (res.ok) {
-      setStatus('Uploaded successfully!');
+      setStatus('success');
       // Reset form
       setFile(null);
     } else {
       const error = await res.json();
-      setStatus(`Upload failed: ${error.error || 'Unknown error'}`);
+      setStatus(`error:${error.error || 'Unknown error'}`);
     }
   }
 
@@ -99,7 +99,29 @@ export default function HomePage() {
             Upload
           </button>
         </form>
-        {status && <div className="text-sm text-neutral-600">{status}</div>}
+        
+        {/* Status messages */}
+        {status === 'Uploading...' && (
+          <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            ⏳ Uploading...
+          </div>
+        )}
+        {status === 'success' && (
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-lg p-4 animate-pulse">
+            <div className="flex items-center gap-3">
+              <span className="text-4xl">🎉</span>
+              <div>
+                <div className="text-lg font-bold text-green-700">Upload Successful!</div>
+                <div className="text-sm text-green-600">Your file has been uploaded to Google Drive</div>
+              </div>
+            </div>
+          </div>
+        )}
+        {status.startsWith('error:') && (
+          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
+            ❌ Upload failed: {status.replace('error:', '')}
+          </div>
+        )}
       </div>
 
       {/* Upload preview */}
