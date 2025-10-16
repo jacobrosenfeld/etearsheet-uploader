@@ -2,9 +2,12 @@
 import { useState, useEffect } from 'react';
 
 type PortalConfig = {
-  clients: string[];
-  campaigns: string[];
-  publications: string[];
+  clie            <select className="input" value={campaign} onChange={(e)=>setCampaign(e.target.value)}>
+              <option value="">Select campaign…</option>
+              {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+            </select> Array<{ name: string; hidden?: boolean }>;
+  campaigns: Array<{ name: string; hidden?: boolean }>;
+  publications: Array<{ name: string; hidden?: boolean }>;
   driveSettings?: {
     rootFolderId?: string;
     rootFolderName?: string;
@@ -74,21 +77,21 @@ export default function HomePage() {
             <label className="label">Publication</label>
             <select className="input" value={pub} onChange={(e)=>setPub(e.target.value)}>
               <option value="">Select publication…</option>
-              {[...cfg.publications].sort().map(p => <option key={p} value={p}>{p}</option>)}
+              {[...cfg.publications].filter(p => !p.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Client</label>
             <select className="input" value={client} onChange={(e)=>setClient(e.target.value)}>
               <option value="">Select client…</option>
-              {[...cfg.clients].sort().map(c => <option key={c} value={c}>{c}</option>)}
+              {[...cfg.clients].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
           </div>
           <div>
             <label className="label">Campaign</label>
             <select className="input" value={campaign} onChange={(e)=>setCampaign(e.target.value)}>
               <option value="">Select campaign…</option>
-              {[...cfg.campaigns].sort().map(c => <option key={c} value={c}>{c}</option>)}
+              {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
             </select>
           </div>
           <div>

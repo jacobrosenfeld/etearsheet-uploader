@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react';
 
 type PortalConfig = {
-  clients: string[];
-  campaigns: string[];
-  publications: string[];
+  clients: Array<{ name: string; hidden?: boolean }>;
+  campaigns: Array<{ name: string; hidden?: boolean }>;
+  publications: Array<{ name: string; hidden?: boolean }>;
   driveSettings?: {
     rootFolderId?: string;
     rootFolderName?: string;
@@ -171,10 +171,23 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('clients')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {[...cfg.clients].sort().map((client, sortedIndex) => (
+              {[...cfg.clients].sort((a, b) => a.name.localeCompare(b.name)).map((client, sortedIndex) => (
                 <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                  <span>{client}</span>
-                  <button className="text-red-600" onClick={() => removeItem('clients', cfg.clients.indexOf(client))}>Remove</button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!client.hidden}
+                      onChange={(e) => {
+                        const updatedClients = cfg.clients.map(c => 
+                          c.name === client.name ? { ...c, hidden: !e.target.checked } : c
+                        );
+                        setCfg({ ...cfg, clients: updatedClients });
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
+                  </div>
+                  <button className="text-red-600" onClick={() => removeItem('clients', cfg.clients.findIndex(c => c.name === client.name))}>Remove</button>
                 </div>
               ))}
               {addingItem === 'clients' && (
@@ -215,10 +228,23 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('campaigns')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {[...cfg.campaigns].sort().map((campaign, sortedIndex) => (
+              {[...cfg.campaigns].sort((a, b) => a.name.localeCompare(b.name)).map((campaign, sortedIndex) => (
                 <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                  <span>{campaign}</span>
-                  <button className="text-red-600" onClick={() => removeItem('campaigns', cfg.campaigns.indexOf(campaign))}>Remove</button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!campaign.hidden}
+                      onChange={(e) => {
+                        const updatedCampaigns = cfg.campaigns.map(c => 
+                          c.name === campaign.name ? { ...c, hidden: !e.target.checked } : c
+                        );
+                        setCfg({ ...cfg, campaigns: updatedCampaigns });
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
+                  </div>
+                  <button className="text-red-600" onClick={() => removeItem('campaigns', cfg.campaigns.findIndex(c => c.name === campaign.name))}>Remove</button>
                 </div>
               ))}
               {addingItem === 'campaigns' && (
@@ -259,10 +285,23 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('publications')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {[...cfg.publications].sort().map((pub, sortedIndex) => (
+              {[...cfg.publications].sort((a, b) => a.name.localeCompare(b.name)).map((pub, sortedIndex) => (
                 <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                  <span>{pub}</span>
-                  <button className="text-red-600" onClick={() => removeItem('publications', cfg.publications.indexOf(pub))}>Remove</button>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={!pub.hidden}
+                      onChange={(e) => {
+                        const updatedPublications = cfg.publications.map(p => 
+                          p.name === pub.name ? { ...p, hidden: !e.target.checked } : p
+                        );
+                        setCfg({ ...cfg, publications: updatedPublications });
+                      }}
+                      className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
+                  </div>
+                  <button className="text-red-600" onClick={() => removeItem('publications', cfg.publications.findIndex(p => p.name === pub.name))}>Remove</button>
                 </div>
               ))}
               {addingItem === 'publications' && (

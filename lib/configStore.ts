@@ -86,11 +86,23 @@ export async function readConfig(): Promise<PortalConfig> {
       throw new Error(`Failed to read config from Blob (${res.status})`);
     }
     
-    const json = (await res.json()) as Partial<PortalConfig>;
+    const json = (await res.json()) as any; // Use any to handle migration
+    
+    // Migration: Convert old string arrays to new object arrays
+    const migrateArray = (arr: any): Array<{ name: string; hidden?: boolean }> => {
+      if (!Array.isArray(arr)) return [];
+      return arr.map(item => {
+        if (typeof item === 'string') {
+          return { name: item, hidden: false };
+        }
+        return item; // Already in new format
+      });
+    };
+    
     return {
-      clients: json.clients ?? [],
-      campaigns: json.campaigns ?? [],
-      publications: json.publications ?? [],
+      clients: migrateArray(json.clients ?? []),
+      campaigns: migrateArray(json.campaigns ?? []),
+      publications: migrateArray(json.publications ?? []),
       driveSettings: json.driveSettings ?? {},
     };
   } catch (e) {
