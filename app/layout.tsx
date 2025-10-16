@@ -19,6 +19,10 @@ return (
 	<img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
 	<h1 className="text-2xl font-bold">Joseph Jacobs Advertising - eTearsheet Upload Portal</h1>
 </div>
+<nav className="flex gap-3">
+	<a className="btn" href="/">Upload</a>
+	<a className="btn" href="/admin">Admin</a>
+</nav>
 </header>
 {children}
 
