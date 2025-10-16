@@ -62,8 +62,9 @@ This is the critical step that allows the service account to impersonate users.
 6. Enter the **Client ID** you copied from Step 5
 7. In the "OAuth Scopes" field, enter:
    ```
-   https://www.googleapis.com/auth/drive.file
+   https://www.googleapis.com/auth/drive
    ```
+   **Note**: This app requires full Drive access (`drive`) rather than the narrower `drive.file` scope to support Shared Drives. The `drive.file` scope only allows access to files created by the app or explicitly shared with it.
 8. Click "Authorize"
 
 **Note:** You must be a Google Workspace admin to complete this step. If you see an error, make sure:
@@ -137,7 +138,7 @@ If you want to share the uploaded files with others:
 
 ### "Permission denied" or "Service Accounts do not have storage quota" errors
 - Make sure you completed Step 6 (Domain-Wide Delegation in Admin Console)
-- Verify the OAuth scope is exactly: `https://www.googleapis.com/auth/drive.file`
+- Verify the OAuth scope is exactly: `https://www.googleapis.com/auth/drive` (full Drive access required for Shared Drives)
 - Check that `GOOGLE_IMPERSONATE_USER` is set to a valid user in your domain
 - The impersonated user must exist and have an active Google Workspace account
 

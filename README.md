@@ -6,9 +6,13 @@ A Next.js app for secure eTearsheet uploads to Google Drive with password-protec
 
 - **Password-protected portal** - Two-tier access (portal password for uploads, admin password for configuration)
 - **Google Drive integration** - Service Account with domain-wide delegation for seamless uploads
-- **Automatic folder hierarchy**: JJA eTearsheets → Client → Campaign → Publication → Publication_date_filename.ext
+- **Shared Drive support** - Works with both My Drive and Shared Drives
+- **Custom parent folder** - Configure a specific Google Drive folder as the root instead of default "JJA eTearsheets"
+- **Automatic folder hierarchy**: Custom Folder → Client → Campaign → Publication → Publication_date_filename.ext
 - **Automatic file naming**: Files are named with publication_YYYY-MM-DD_originalname.ext format
 - **Admin configuration panel** - Manage clients, campaigns, and publications through web UI
+- **Inline editing** - Add/remove items directly in the admin panel without browser popups
+- **Alphabetical sorting** - All lists and dropdowns are sorted alphabetically for easy navigation
 - **Role-based access** - Admin users can configure settings, regular users can only upload
 
 ## Quick Setup
@@ -40,6 +44,10 @@ GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYourPrivateKeyH
 
 # Google Workspace user to impersonate (must be in your domain)
 GOOGLE_IMPERSONATE_USER=admin@yourdomain.com
+
+# Optional: Custom parent folder URL (leave empty to use default "JJA eTearsheets")
+# Can be a My Drive folder or Shared Drive folder URL
+# GOOGLE_DRIVE_PARENT_FOLDER_URL=https://drive.google.com/drive/folders/YOUR_FOLDER_ID
 
 # App URL (optional)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
@@ -94,22 +102,37 @@ Open http://localhost:3000 and log in with your portal password.## How It Works
 ## Admin Configuration
 
 Access the admin panel at `/admin` by logging in with the admin password. You can:
-- Add/remove clients
-- Add/remove campaigns
-- Add/remove publications
-- Configuration is saved automatically
+
+- **Add/remove clients, campaigns, and publications** - Click "+ Add" to add new items with inline text entry (no browser popups)
+- **Configure custom parent folder** - Paste a Google Drive folder URL to use as the root folder instead of the default "JJA eTearsheets"
+- **Verify folder access** - Test if the service account can access your specified folder
+- **Shared Drive support** - Works with both My Drive and Shared Drive folders
+- Configuration is saved automatically when you add/remove items
+
+### Setting up a Custom Parent Folder
+
+1. Go to your desired Google Drive folder (My Drive or Shared Drive)
+2. Copy the folder URL from the browser address bar
+3. In the admin panel, paste it in the "Parent Folder URL" field
+4. Click "Verify Folder Access" to test the connection
+5. **Important**: Share the folder with your service account email (shown in the admin panel) and give it "Editor" permissions
+6. Save the configuration
+
+The app will now organize all uploads within your specified folder instead of creating a new "JJA eTearsheets" folder.
 
 ## Folder Structure
 
 Files are automatically organized in Google Drive as:
 
 ```
-JJA eTearsheets/
+Custom Parent Folder (or "JJA eTearsheets" if not specified)/
   └── Client Name/
       └── Campaign Name/
           └── Publication Name/
               └── Publication_2025-10-16_filename.pdf
 ```
+
+**Custom Parent Folder**: In the admin panel, you can specify any Google Drive folder (My Drive or Shared Drive) as the root folder. Just paste the folder URL and the app will organize all uploads within that folder structure.
 
 ## Troubleshooting
 
@@ -126,9 +149,17 @@ JJA eTearsheets/
 
 ### "Permission denied" or "Invalid grant" errors
 - Make sure domain-wide delegation is enabled for the service account
-- Verify the OAuth scope is exactly: `https://www.googleapis.com/auth/drive.file`
+- Verify the OAuth scope is exactly: `https://www.googleapis.com/auth/drive` (full Drive access required for Shared Drives)
 - Check that the impersonated user exists and is active
 - Ensure the private key is properly formatted with `\n` for newlines
+- For Shared Drive folders, make sure the folder is shared with the service account email
+
+### Shared Drive Issues
+- The app supports both My Drive and Shared Drive folders
+- For Shared Drives, use the full `https://www.googleapis.com/auth/drive` scope (not `drive.file`)
+- Make sure the Shared Drive folder is shared with the service account email
+- The service account needs "Editor" permissions on the folder
+- Use the "Verify Folder Access" button in the admin panel to test connectivity
 
 ### Files not appearing in Drive
 - Log in to Google Drive as the impersonated user to see uploaded files
@@ -159,7 +190,19 @@ JJA eTearsheets/
 - `app/api/auth/login/route.ts` - Password authentication
 - `middleware.ts` - Route protection
 
-## Security Notes
+## What's New
+
+### v2.0 Features
+- **Shared Drive Support**: Upload to Shared Drives in addition to My Drive
+- **Custom Parent Folders**: Configure any Google Drive folder as the root instead of default "JJA eTearsheets"
+- **Inline Admin Editing**: Add clients/campaigns/publications directly in the web interface without browser popups
+- **Alphabetical Sorting**: All lists and dropdowns are automatically sorted alphabetically
+- **Folder Verification**: Test folder access before saving configuration
+- **Improved OAuth Scope**: Uses full `drive` scope for Shared Drive compatibility
+
+### Migration Notes
+- **OAuth Scope Change**: Update your domain-wide delegation scope from `drive.file` to `drive` in Google Workspace Admin Console
+- **Environment Variables**: The scope change requires updating your Google Workspace domain-wide delegation settings
 
 - Never commit the JSON key file or `.env.local` to git
 - Use strong, unique passwords for `PORTAL_PASSWORD` and `ADMIN_PASSWORD`
