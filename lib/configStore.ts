@@ -73,7 +73,12 @@ export async function readConfig(): Promise<PortalConfig> {
     const url = await findConfigUrl();
     if (!url) {
       // Not created yet — return empty
-      return { clients: [], campaigns: [], publications: [] };
+      return { 
+        clients: [], 
+        campaigns: [], 
+        publications: [],
+        driveSettings: {}
+      };
     }
     
     const res = await fetch(url, { cache: 'no-store' });
@@ -86,11 +91,17 @@ export async function readConfig(): Promise<PortalConfig> {
       clients: json.clients ?? [],
       campaigns: json.campaigns ?? [],
       publications: json.publications ?? [],
+      driveSettings: json.driveSettings ?? {},
     };
   } catch (e) {
     console.error('Error reading config:', e);
     // Return empty config as fallback
-    return { clients: [], campaigns: [], publications: [] };
+    return { 
+      clients: [], 
+      campaigns: [], 
+      publications: [],
+      driveSettings: {}
+    };
   }
 }
 
