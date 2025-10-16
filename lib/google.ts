@@ -57,7 +57,9 @@ async function findOrCreateFolder(name: string, parentId?: string): Promise<stri
   
   const searchResult = await drive.files.list({
     q: query,
-    fields: 'files(id, name)'
+    fields: 'files(id, name)',
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true
   });
 
   if (searchResult.data.files && searchResult.data.files.length > 0) {
@@ -71,7 +73,8 @@ async function findOrCreateFolder(name: string, parentId?: string): Promise<stri
       mimeType: 'application/vnd.google-apps.folder',
       parents: parentId ? [parentId] : undefined
     },
-    fields: 'id'
+    fields: 'id',
+    supportsAllDrives: true
   });
 
   return createResult.data.id!;
@@ -97,8 +100,15 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
       try {
         const folderInfo = await drive.files.get({
           fileId: customFolderId,
-          fields: 'id, name'
+          fields: 'id, name, mimeType',
+          supportsAllDrives: true
         });
+        
+        // Verify it's actually a folder
+        if (folderInfo.data.mimeType !== 'application/vnd.google-apps.folder') {
+          console.error('[ensureFolderPath] ID is not a folder:', folderInfo.data.mimeType);
+          throw new Error('The provided ID is not a folder');
+        }
         
         if (folderInfo.data.id) {
           rootFolderId = folderInfo.data.id;
@@ -197,7 +207,8 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
     media: { 
       mimeType: opts.file.type || 'application/octet-stream', 
       body: stream 
-    }
+    },
+    supportsAllDrives: true
   });
   
   return created.data;
