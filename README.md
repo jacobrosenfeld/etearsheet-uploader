@@ -1,81 +1,93 @@
 # JJA eTearsheet Uploader
 
-A small Next.js app to let publications upload eTearsheets to a Google Drive folder structure. The app supports an admin who configures Google Drive (via OAuth) and regular users who can upload without authorizing Google.
+A simple Next.js app that allows publications to upload eTearsheets directly to a Google Drive folder structure with no authentication required.
 
 ## Features
 
-- Admin-only Google Drive setup (OAuth)
-- Regular user uploads without Google auth
-- Automatic Drive folder hierarchy: Root → Client → Campaign → Date
-- Role-based sessions (admin / user)
-- Simple password-based portal login
+- **No user authentication** - Public upload form
+- **Service Account authentication** - Hardcoded Google Drive access
+- **Automatic folder hierarchy**: JJA eTearsheets → Client → Campaign → Publication → Publication_date_filename.ext
+- **Automatic file naming**: Files are named with publication_YYYY-MM-DD_originalname.ext format
 
 ## Quick setup (local)
 
-1. Install dependencies
+### 1. Create a Google Service Account
 
-   ```bash
-   npm install
-   ```
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Enable the Google Drive API
+4. Go to IAM & Admin → Service Accounts
+5. Create a service account (e.g., "etearsheet-uploader")
+6. Create and download a JSON key file
+7. Share your Google Drive folder with the service account email (give it Editor permissions)
 
-2. Create a `.env.local` with at least the following values (examples):
+### 2. Install dependencies
 
-   ```
-   PORTAL_PASSWORD=some-portal-password
-   ADMIN_PASSWORD=some-admin-password
-   SESSION_SECRET=long-random-secret
-   NEXT_PUBLIC_APP_URL=http://localhost:3000
-   # Google OAuth (only required if you will configure Google Drive via Admin)
-   GOOGLE_CLIENT_ID=...
-   GOOGLE_CLIENT_SECRET=...
-   GOOGLE_REDIRECT_URI=http://localhost:3000/api/auth/callback
-   ```
+```bash
+npm install
+```
 
-3. Run the dev server
+### 3. Create a `.env.local` file with your service account credentials:
 
-   ```bash
-   npm run dev
-   ```
+```
+GOOGLE_SERVICE_ACCOUNT_EMAIL=your-service-account@your-project.iam.gserviceaccount.com
+GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYourPrivateKeyHere\n-----END PRIVATE KEY-----\n"
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-   Open: http://localhost:3000/login
+**Note**: Copy the `client_email` and `private_key` fields from your downloaded JSON key file.
+
+### 4. Run the dev server
+
+```bash
+npm run dev
+```
+
+Open: http://localhost:3000
 
 ## Environment variables
 
-- `PORTAL_PASSWORD` — password for general users
-- `ADMIN_PASSWORD` — password that grants admin access
-- `SESSION_SECRET` — secret for signing JWT session cookies (required)
-- `NEXT_PUBLIC_APP_URL` — public URL for redirects (optional, helpful in prod)
-- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI` — for admin Google Drive OAuth
+- `GOOGLE_SERVICE_ACCOUNT_EMAIL` — Service account email from JSON key file
+- `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` — Private key from JSON key file (include the newlines as `\n`)
+- `NEXT_PUBLIC_APP_URL` — Public URL for the app (optional)
 
-  When deploying (Vercel, etc.) set these as environment variables in your deployment settings.
+When deploying (Vercel, etc.) set these as environment variables in your deployment settings.## Deployment to Vercel
 
-## Middleware and public assets
+1. Push your code to GitHub
+2. Import the project in Vercel
+3. Add the environment variables:
+   - `GOOGLE_SERVICE_ACCOUNT_EMAIL`
+   - `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+   - `NEXT_PUBLIC_APP_URL` (set to your Vercel domain)
+4. Deploy
 
-This app uses a middleware to protect routes. Public routes and assets must be listed in `middleware.ts`'s `PUBLIC_PATHS`. Common public entries include:
+## Admin Configuration
 
-- `/login` and login assets
-- `/privacy`
-- favicon and logo files such as `/favicon.svg`, `/favicon-light.svg`, `/favicon-dark.svg`, `/jja_white.svg`, etc.
+You can manage the portal configuration (clients, campaigns, publications) through the admin panel at `/admin`. The configuration is stored in Vercel Blob storage.
 
-If logos or favicons don't load before login, add their paths to `PUBLIC_PATHS`.
+## Folder Structure
 
-## Logout / login 405 troubleshooting
+Files are automatically organized in Google Drive as:
 
-If you see a 405 when clicking "Logout" and returning to `/login`:
+```
+JJA eTearsheets/
+  └── Client Name/
+      └── Campaign Name/
+          └── Publication Name/
+              └── Publication_2025-10-16_filename.pdf
+```
 
-- Ensure `app/api/logout/route.ts` handles POST and returns a redirect using the incoming request URL (the code should use `new URL('/login', request.url)`).
-- Verify `/login` is included in `middleware.ts`'s `PUBLIC_PATHS`.
-- Ensure session cookies are cleared (see `lib/sessions.ts`) and `SESSION_SECRET` is set.
+## Troubleshooting
 
-## Admin tasks
+**"Missing Google Service Account credentials" error:**
+- Ensure both `GOOGLE_SERVICE_ACCOUNT_EMAIL` and `GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY` are set in your environment variables
+- Make sure the private key includes the full key with `-----BEGIN PRIVATE KEY-----` and `-----END PRIVATE KEY-----`
+- In the environment variable, newlines should be actual `\n` characters
 
-- Log in with the admin password to access `/admin`.
-- From the admin panel, authenticate the app with Google to configure Drive settings and create the root folder.
-
-## Notes
-
-- Token storage is currently in-memory / ephemeral for development. Persist tokens in production if you need long-lived access.
-- Keep `SESSION_SECRET` secure.
+**Upload fails:**
+- Check that the service account has been granted Editor permissions on the Google Drive folder
+- Verify the Google Drive API is enabled in your Google Cloud project
+- Check Vercel logs for detailed error messages
 
 ## Contributing / Contact
 

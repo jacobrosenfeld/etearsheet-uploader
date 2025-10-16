@@ -1,10 +1,8 @@
 import './globals.css';
 import React from 'react';
-import { getRole } from '@/lib/sessions';
 
 
-export default async function RootLayout({ children }: { children: React.ReactNode }) {
-const userRole = await getRole();
+export default function RootLayout({ children }: { children: React.ReactNode }) {
 return (
 <html lang="en">
 	<head>
@@ -21,11 +19,6 @@ return (
 	<img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
 	<h1 className="text-2xl font-bold">Joseph Jacobs Advertising - eTearsheet Upload Portal</h1>
 </div>
-<nav className="flex gap-3">
-<a className="btn" href="/">Upload</a>
-{userRole === 'admin' && <a className="btn" href="/admin">Admin</a>}
-<form action="/api/logout" method="post"><button className="btn" type="submit">Logout</button></form>
-</nav>
 </header>
 {children}
 

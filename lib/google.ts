@@ -1,47 +1,30 @@
 import { google } from 'googleapis';
 import { readConfig, writeConfig } from './configStore';
 
-// In-memory token store (in production, use a proper database)
-let storedTokens: any = null;
-
-export async function driveClient() {
-  if (!storedTokens) {
-    return null;
+// Initialize Google Drive client with Service Account
+function getDriveClient() {
+  // Parse service account credentials from environment variable
+  const serviceAccountEmail = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
+  const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  
+  if (!serviceAccountEmail || !serviceAccountKey) {
+    throw new Error('Missing Google Service Account credentials. Set GOOGLE_SERVICE_ACCOUNT_EMAIL and GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY in environment variables.');
   }
-  
-  const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
-  
-  oauth2.setCredentials(storedTokens);
-  return google.drive({ version: 'v3', auth: oauth2 });
-}
 
-export async function getAuthUrl() {
-  const oauth2 = new google.auth.OAuth2(
-    process.env.GOOGLE_CLIENT_ID,
-    process.env.GOOGLE_CLIENT_SECRET,
-    process.env.GOOGLE_REDIRECT_URI
-  );
-  
-  return oauth2.generateAuthUrl({
-    access_type: 'offline',
-    scope: ['https://www.googleapis.com/auth/drive.file']
+  const auth = new google.auth.GoogleAuth({
+    credentials: {
+      client_email: serviceAccountEmail,
+      private_key: serviceAccountKey,
+    },
+    scopes: ['https://www.googleapis.com/auth/drive.file'],
   });
-}
 
-export async function storeTokens(tokens: any) {
-  // Store tokens in memory (in production, use secure database)
-  storedTokens = tokens;
-  console.log('Tokens stored successfully');
+  return google.drive({ version: 'v3', auth });
 }
 
 // Find or create a folder in Google Drive
 async function findOrCreateFolder(name: string, parentId?: string): Promise<string> {
-  const drive = await driveClient();
-  if (!drive) throw new Error('Not authenticated with Google Drive');
+  const drive = getDriveClient();
 
   // Search for existing folder
   const query = `name='${name}' and mimeType='application/vnd.google-apps.folder' and trashed=false${parentId ? ` and '${parentId}' in parents` : ''}`;
@@ -99,8 +82,7 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
 }
 
 export async function uploadIntoPath(opts: { file: File; client: string; campaign: string; publication: string; }) {
-  const drive = await driveClient();
-  if (!drive) throw new Error('Not authenticated with Google Drive');
+  const drive = getDriveClient();
   
   const parentId = await ensureFolderPath({ 
     client: opts.client, 
