@@ -134,6 +134,18 @@ If you want to share the uploaded files with others:
 3. Share that folder with whoever needs access
 4. The app will automatically organize files within that folder
 
+## Step 11: Configure the Admin Panel
+
+After deployment, access your app and log in with the admin password to configure:
+
+1. **Add Clients, Campaigns, and Publications**: Use the "+ Add" buttons to create your organizational structure
+2. **Set Visibility**: Click the eye icons next to any item to show/hide it from the upload portal
+3. **Configure Custom Folder** (optional): Paste a Google Drive folder URL to use as the root folder
+4. **Verify Access**: Use the "Verify Folder Access" button to test folder permissions
+5. **Save Settings**: Drive settings save individually with their own button - other changes save instantly
+
+All admin changes save automatically - there's no manual save button needed!
+
 ## Troubleshooting
 
 ### "Permission denied" or "Service Accounts do not have storage quota" errors

@@ -12,6 +12,8 @@ A Next.js app for secure eTearsheet uploads to Google Drive with password-protec
 - **Automatic file naming**: Files are named with publication_YYYY-MM-DD_originalname.ext format
 - **Admin configuration panel** - Manage clients, campaigns, and publications through web UI
 - **Inline editing** - Add/remove items directly in the admin panel without browser popups
+- **Visibility controls** - Show/hide clients, campaigns, and publications from the upload portal with eye icons
+- **Instant saving** - All admin changes save automatically - no manual save button needed
 - **Alphabetical sorting** - All lists and dropdowns are sorted alphabetically for easy navigation
 - **Role-based access** - Admin users can configure settings, regular users can only upload
 
@@ -104,19 +106,27 @@ Open http://localhost:3000 and log in with your portal password.## How It Works
 Access the admin panel at `/admin` by logging in with the admin password. You can:
 
 - **Add/remove clients, campaigns, and publications** - Click "+ Add" to add new items with inline text entry (no browser popups)
+- **Show/hide items** - Click the eye icons next to any client, campaign, or publication to instantly show/hide them from the upload portal
 - **Configure custom parent folder** - Paste a Google Drive folder URL to use as the root folder instead of the default "JJA eTearsheets"
 - **Verify folder access** - Test if the service account can access your specified folder
 - **Shared Drive support** - Works with both My Drive and Shared Drive folders
-- Configuration is saved automatically when you add/remove items
+- **Instant saving** - All changes save automatically when you make them - no manual save button needed
+
+### Managing Visibility
+
+Each client, campaign, and publication has an eye icon next to it:
+- **Open eye (👁️)**: Item is visible in the upload portal dropdowns
+- **Closed eye (👁️‍🗨️)**: Item is hidden from the upload portal
+
+Click any eye icon to instantly toggle visibility and save the change. Hidden items won't appear in the dropdown menus for users uploading files.
 
 ### Setting up a Custom Parent Folder
 
 1. Go to your desired Google Drive folder (My Drive or Shared Drive)
 2. Copy the folder URL from the browser address bar
 3. In the admin panel, paste it in the "Parent Folder URL" field
-4. Click "Verify Folder Access" to test the connection
-5. **Important**: Share the folder with your service account email (shown in the admin panel) and give it "Editor" permissions
-6. Save the configuration
+4. **Important**: Share the folder with your service account email (shown in the admin panel) and give it "Editor" permissions
+5. Click "💾 Save Drive Settings" to save just the drive configuration
 
 The app will now organize all uploads within your specified folder instead of creating a new "JJA eTearsheets" folder.
 
@@ -191,6 +201,11 @@ Custom Parent Folder (or "JJA eTearsheets" if not specified)/
 - `middleware.ts` - Route protection
 
 ## What's New
+
+### v2.1 Features
+- **Instant Visibility Controls**: Eye icons next to all items allow instant show/hide toggling that saves automatically
+- **Individual Save Buttons**: Drive settings now have their own save button for granular control
+- **Improved UX**: Removed the big save button - everything saves instantly when changed
 
 ### v2.0 Features
 - **Shared Drive Support**: Upload to Shared Drives in addition to My Drive
