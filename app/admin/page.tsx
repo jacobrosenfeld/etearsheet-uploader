@@ -143,7 +143,11 @@ export default function AdminPage() {
     if (!editingItem || !editItemValue.trim()) return;
     
     const { type, index } = editingItem;
-    const originalCfg = cfg; // Store original config for rollback
+    // Store a deep copy of the original config for proper rollback
+    const originalCfg = { 
+      ...cfg, 
+      [type]: [...cfg[type].map(item => ({ ...item }))] 
+    };
     const updatedItems = [...cfg[type]];
     updatedItems[index] = { ...updatedItems[index], name: editItemValue.trim() };
     const updatedCfg = { ...cfg, [type]: updatedItems };
