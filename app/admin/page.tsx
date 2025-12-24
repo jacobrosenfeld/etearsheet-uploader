@@ -143,6 +143,7 @@ export default function AdminPage() {
     if (!editingItem || !editItemValue.trim()) return;
     
     const { type, index } = editingItem;
+    const originalCfg = cfg; // Store original config for rollback
     const updatedItems = [...cfg[type]];
     updatedItems[index] = { ...updatedItems[index], name: editItemValue.trim() };
     const updatedCfg = { ...cfg, [type]: updatedItems };
@@ -160,7 +161,7 @@ export default function AdminPage() {
       setEditItemValue('');
     } else {
       // Revert on error
-      setCfg(cfg);
+      setCfg(originalCfg);
       alert('Failed to save edited item');
     }
   }
