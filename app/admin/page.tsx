@@ -25,6 +25,8 @@ export default function AdminPage() {
   const [verifying, setVerifying] = useState(false);
   const [addingItem, setAddingItem] = useState<'clients' | 'campaigns' | 'publications' | null>(null);
   const [newItemValue, setNewItemValue] = useState('');
+  const [editingItem, setEditingItem] = useState<{ type: 'clients' | 'campaigns' | 'publications'; index: number; } | null>(null);
+  const [editItemValue, setEditItemValue] = useState('');
 
   useEffect(() => {
     fetch('/api/config')
@@ -126,6 +128,43 @@ export default function AdminPage() {
     }
   }
 
+  function startEditingItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
+    const item = cfg[type][index];
+    setEditingItem({ type, index });
+    setEditItemValue(item.name);
+  }
+
+  function cancelEditingItem() {
+    setEditingItem(null);
+    setEditItemValue('');
+  }
+
+  async function saveEditedItem() {
+    if (!editingItem || !editItemValue.trim()) return;
+    
+    const { type, index } = editingItem;
+    const updatedItems = [...cfg[type]];
+    updatedItems[index] = { ...updatedItems[index], name: editItemValue.trim() };
+    const updatedCfg = { ...cfg, [type]: updatedItems };
+    setCfg(updatedCfg);
+    
+    // Save immediately to the backend
+    const res = await fetch('/api/config', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedCfg)
+    });
+    
+    if (res.ok) {
+      setEditingItem(null);
+      setEditItemValue('');
+    } else {
+      // Revert on error
+      setCfg(cfg);
+      alert('Failed to save edited item');
+    }
+  }
+
   async function verifyFolderAccess() {
     const folderUrl = cfg.driveSettings?.parentFolderUrl;
     if (!folderUrl) {
@@ -172,52 +211,107 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('clients')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {[...cfg.clients].sort((a, b) => a.name.localeCompare(b.name)).map((client, sortedIndex) => (
-                <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                  <div className="flex items-center gap-2">
-                    <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
-                    <button
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        const updatedClients = cfg.clients.map(c => 
-                          c.name === client.name ? { ...c, hidden: !c.hidden } : c
-                        );
-                        const newCfg = { ...cfg, clients: updatedClients };
-                        setCfg(newCfg);
-                        
-                        // Save immediately to the backend
-                        const res = await fetch('/api/config', {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(newCfg)
-                        });
-                        
-                        if (!res.ok) {
-                          // Revert on error
-                          setCfg(cfg);
-                          alert('Failed to update visibility');
-                        }
-                      }}
-                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
-                      title={client.hidden ? 'Show this client' : 'Hide this client'}
-                    >
-                      {client.hidden ? (
-                        // Eye with slash (hidden)
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                        </svg>
-                      ) : (
-                        // Eye (visible)
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
+              {[...cfg.clients].sort((a, b) => a.name.localeCompare(b.name)).map((client, sortedIndex) => {
+                const actualIndex = cfg.clients.findIndex(c => c.name === client.name);
+                const isEditing = editingItem?.type === 'clients' && editingItem?.index === actualIndex;
+                
+                return (
+                  <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="text"
+                          className="flex-1 px-2 py-1 border rounded mr-2"
+                          value={editItemValue}
+                          onChange={(e) => setEditItemValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEditedItem();
+                            if (e.key === 'Escape') cancelEditingItem();
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={saveEditedItem}
+                            className="text-green-600 hover:text-green-700 p-1 rounded"
+                            title="Save changes"
+                            disabled={!editItemValue.trim()}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={cancelEditingItem}
+                            className="text-gray-600 hover:text-gray-700 p-1 rounded"
+                            title="Cancel"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const updatedClients = cfg.clients.map(c => 
+                                c.name === client.name ? { ...c, hidden: !c.hidden } : c
+                              );
+                              const newCfg = { ...cfg, clients: updatedClients };
+                              setCfg(newCfg);
+                              
+                              // Save immediately to the backend
+                              const res = await fetch('/api/config', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newCfg)
+                              });
+                              
+                              if (!res.ok) {
+                                // Revert on error
+                                setCfg(cfg);
+                                alert('Failed to update visibility');
+                              }
+                            }}
+                            className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                            title={client.hidden ? 'Show this client' : 'Hide this client'}
+                          >
+                            {client.hidden ? (
+                              // Eye with slash (hidden)
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                              </svg>
+                            ) : (
+                              // Eye (visible)
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            className="text-blue-600 hover:text-blue-700 p-1 rounded" 
+                            onClick={() => startEditingItem('clients', actualIndex)}
+                            title="Edit client name"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button className="text-red-600 hover:text-red-700" onClick={() => removeItem('clients', actualIndex)}>Remove</button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <button className="text-red-600" onClick={() => removeItem('clients', cfg.clients.findIndex(c => c.name === client.name))}>Remove</button>
-                </div>
-              ))}
+                );
+              })}
               {addingItem === 'clients' && (
                 <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
                   <input
@@ -256,52 +350,107 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('campaigns')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {[...cfg.campaigns].sort((a, b) => a.name.localeCompare(b.name)).map((campaign, sortedIndex) => (
-                <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                  <div className="flex items-center gap-2">
-                    <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
-                    <button
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        const updatedCampaigns = cfg.campaigns.map(c => 
-                          c.name === campaign.name ? { ...c, hidden: !c.hidden } : c
-                        );
-                        const newCfg = { ...cfg, campaigns: updatedCampaigns };
-                        setCfg(newCfg);
-                        
-                        // Save immediately to the backend
-                        const res = await fetch('/api/config', {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(newCfg)
-                        });
-                        
-                        if (!res.ok) {
-                          // Revert on error
-                          setCfg(cfg);
-                          alert('Failed to update visibility');
-                        }
-                      }}
-                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
-                      title={campaign.hidden ? 'Show this campaign' : 'Hide this campaign'}
-                    >
-                      {campaign.hidden ? (
-                        // Eye with slash (hidden)
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                        </svg>
-                      ) : (
-                        // Eye (visible)
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
+              {[...cfg.campaigns].sort((a, b) => a.name.localeCompare(b.name)).map((campaign, sortedIndex) => {
+                const actualIndex = cfg.campaigns.findIndex(c => c.name === campaign.name);
+                const isEditing = editingItem?.type === 'campaigns' && editingItem?.index === actualIndex;
+                
+                return (
+                  <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="text"
+                          className="flex-1 px-2 py-1 border rounded mr-2"
+                          value={editItemValue}
+                          onChange={(e) => setEditItemValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEditedItem();
+                            if (e.key === 'Escape') cancelEditingItem();
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={saveEditedItem}
+                            className="text-green-600 hover:text-green-700 p-1 rounded"
+                            title="Save changes"
+                            disabled={!editItemValue.trim()}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={cancelEditingItem}
+                            className="text-gray-600 hover:text-gray-700 p-1 rounded"
+                            title="Cancel"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const updatedCampaigns = cfg.campaigns.map(c => 
+                                c.name === campaign.name ? { ...c, hidden: !c.hidden } : c
+                              );
+                              const newCfg = { ...cfg, campaigns: updatedCampaigns };
+                              setCfg(newCfg);
+                              
+                              // Save immediately to the backend
+                              const res = await fetch('/api/config', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newCfg)
+                              });
+                              
+                              if (!res.ok) {
+                                // Revert on error
+                                setCfg(cfg);
+                                alert('Failed to update visibility');
+                              }
+                            }}
+                            className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                            title={campaign.hidden ? 'Show this campaign' : 'Hide this campaign'}
+                          >
+                            {campaign.hidden ? (
+                              // Eye with slash (hidden)
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                              </svg>
+                            ) : (
+                              // Eye (visible)
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            className="text-blue-600 hover:text-blue-700 p-1 rounded" 
+                            onClick={() => startEditingItem('campaigns', actualIndex)}
+                            title="Edit campaign name"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button className="text-red-600 hover:text-red-700" onClick={() => removeItem('campaigns', actualIndex)}>Remove</button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <button className="text-red-600" onClick={() => removeItem('campaigns', cfg.campaigns.findIndex(c => c.name === campaign.name))}>Remove</button>
-                </div>
-              ))}
+                );
+              })}
               {addingItem === 'campaigns' && (
                 <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
                   <input
@@ -340,52 +489,107 @@ export default function AdminPage() {
               <button className="btn btn-primary" onClick={() => startAddingItem('publications')}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {[...cfg.publications].sort((a, b) => a.name.localeCompare(b.name)).map((pub, sortedIndex) => (
-                <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                  <div className="flex items-center gap-2">
-                    <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
-                    <button
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        const updatedPublications = cfg.publications.map(p => 
-                          p.name === pub.name ? { ...p, hidden: !p.hidden } : p
-                        );
-                        const newCfg = { ...cfg, publications: updatedPublications };
-                        setCfg(newCfg);
-                        
-                        // Save immediately to the backend
-                        const res = await fetch('/api/config', {
-                          method: 'PUT',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(newCfg)
-                        });
-                        
-                        if (!res.ok) {
-                          // Revert on error
-                          setCfg(cfg);
-                          alert('Failed to update visibility');
-                        }
-                      }}
-                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
-                      title={pub.hidden ? 'Show this publication' : 'Hide this publication'}
-                    >
-                      {pub.hidden ? (
-                        // Eye with slash (hidden)
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                        </svg>
-                      ) : (
-                        // Eye (visible)
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      )}
-                    </button>
+              {[...cfg.publications].sort((a, b) => a.name.localeCompare(b.name)).map((pub, sortedIndex) => {
+                const actualIndex = cfg.publications.findIndex(p => p.name === pub.name);
+                const isEditing = editingItem?.type === 'publications' && editingItem?.index === actualIndex;
+                
+                return (
+                  <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+                    {isEditing ? (
+                      <>
+                        <input
+                          type="text"
+                          className="flex-1 px-2 py-1 border rounded mr-2"
+                          value={editItemValue}
+                          onChange={(e) => setEditItemValue(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') saveEditedItem();
+                            if (e.key === 'Escape') cancelEditingItem();
+                          }}
+                          autoFocus
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={saveEditedItem}
+                            className="text-green-600 hover:text-green-700 p-1 rounded"
+                            title="Save changes"
+                            disabled={!editItemValue.trim()}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={cancelEditingItem}
+                            className="text-gray-600 hover:text-gray-700 p-1 rounded"
+                            title="Cancel"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
+                          <button
+                            onClick={async (e) => {
+                              e.preventDefault();
+                              const updatedPublications = cfg.publications.map(p => 
+                                p.name === pub.name ? { ...p, hidden: !p.hidden } : p
+                              );
+                              const newCfg = { ...cfg, publications: updatedPublications };
+                              setCfg(newCfg);
+                              
+                              // Save immediately to the backend
+                              const res = await fetch('/api/config', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(newCfg)
+                              });
+                              
+                              if (!res.ok) {
+                                // Revert on error
+                                setCfg(cfg);
+                                alert('Failed to update visibility');
+                              }
+                            }}
+                            className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                            title={pub.hidden ? 'Show this publication' : 'Hide this publication'}
+                          >
+                            {pub.hidden ? (
+                              // Eye with slash (hidden)
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
+                              </svg>
+                            ) : (
+                              // Eye (visible)
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                              </svg>
+                            )}
+                          </button>
+                        </div>
+                        <div className="flex gap-2">
+                          <button 
+                            className="text-blue-600 hover:text-blue-700 p-1 rounded" 
+                            onClick={() => startEditingItem('publications', actualIndex)}
+                            title="Edit publication name"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button className="text-red-600 hover:text-red-700" onClick={() => removeItem('publications', actualIndex)}>Remove</button>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <button className="text-red-600" onClick={() => removeItem('publications', cfg.publications.findIndex(p => p.name === pub.name))}>Remove</button>
-                </div>
-              ))}
+                );
+              })}
               {addingItem === 'publications' && (
                 <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
                   <input
