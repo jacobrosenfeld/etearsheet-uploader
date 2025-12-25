@@ -64,15 +64,31 @@ export default function HomePage() {
     setUploadProgress(0);
     setUploadStartTime(Date.now());
     
-    const form = new FormData();
-    form.set('publication', pub);
-    form.set('client', client);
-    form.set('campaign', campaign);
-    form.set('file', file);
-    
     try {
-      // Use XMLHttpRequest for progress tracking
-      const uploadWithProgress = new Promise<Response>((resolve, reject) => {
+      // Step 1: Request an upload session from our backend (only metadata, no file)
+      const initiateRes = await fetch('/api/upload/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          publication: pub,
+          client: client,
+          campaign: campaign,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type || 'application/octet-stream'
+        })
+      });
+
+      if (!initiateRes.ok) {
+        const error = await initiateRes.json();
+        throw new Error(error.error || 'Failed to initiate upload');
+      }
+
+      const { uploadUrl } = await initiateRes.json();
+      console.log('Upload URL received:', uploadUrl);
+
+      // Step 2: Upload file directly to Google Drive (bypasses Vercel entirely)
+      const uploadWithProgress = new Promise<string>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         
         xhr.upload.addEventListener('progress', (e) => {
@@ -84,20 +100,15 @@ export default function HomePage() {
         
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
-            resolve(new Response(xhr.response, {
-              status: xhr.status,
-              statusText: xhr.statusText
-            }));
-          } else {
-            // Parse error response if available
-            let errorMsg = `Upload failed (Status ${xhr.status})`;
             try {
-              const errorData = JSON.parse(xhr.response);
-              errorMsg = errorData.error || errorMsg;
+              // Google Drive returns the file metadata on success
+              const responseData = JSON.parse(xhr.response);
+              resolve(responseData.id); // File ID from Google Drive
             } catch {
-              errorMsg = xhr.statusText || errorMsg;
+              reject(new Error('Invalid response from Google Drive'));
             }
-            reject(new Error(errorMsg));
+          } else {
+            reject(new Error(`Upload failed (Status ${xhr.status})`));
           }
         });
         
@@ -106,25 +117,33 @@ export default function HomePage() {
         });
         
         xhr.addEventListener('timeout', () => {
-          reject(new Error('Upload timed out - file may be too large or connection too slow. Please try again with a smaller file or better connection.'));
+          reject(new Error('Upload timed out - please try again'));
         });
         
-        xhr.open('POST', '/api/upload');
+        xhr.open('PUT', uploadUrl);
         xhr.timeout = UPLOAD_TIMEOUT_MS;
-        xhr.send(form);
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.send(file); // Send the raw file, not FormData
       });
       
-      const res = await uploadWithProgress;
+      const fileId = await uploadWithProgress;
       
-      if (res.ok) {
+      // Step 3: Verify upload completion with our backend (optional but recommended)
+      const verifyRes = await fetch('/api/upload/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fileId })
+      });
+
+      if (verifyRes.ok) {
         setUploadProgress(100);
         setStatus('success');
         // Reset form
         setFile(null);
         setUploadStartTime(null);
       } else {
-        const errorData = await res.json();
-        setStatus(`error:${errorData.error || 'Unknown error'}`);
+        const error = await verifyRes.json();
+        setStatus(`error:${error.error || 'Upload succeeded but verification failed'}`);
         setUploadProgress(0);
         setUploadStartTime(null);
       }

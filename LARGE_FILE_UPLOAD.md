@@ -1,16 +1,77 @@
 # Large File Upload Configuration
 
 ## Overview
-This document describes the large file upload improvements implemented to handle files up to 500MB reliably.
+This document describes the direct-to-Google-Drive upload architecture that bypasses Vercel's payload limits entirely.
+
+## Architecture
+
+### Direct Client-to-Google-Drive Upload
+Files are uploaded **directly from the browser to Google Drive**, completely bypassing Vercel's serverless functions. This eliminates the ~4.5MB Vercel payload limit.
+
+#### Upload Flow
+1. **Client → Backend**: Request upload session (only metadata, ~1KB)
+2. **Backend → Google Drive**: Create resumable upload session
+3. **Backend → Client**: Return upload URL
+4. **Client → Google Drive**: Upload file directly (no size limit)
+5. **Client → Backend**: Notify completion (only file ID)
+
+#### Why This Works
+- **No file data through Vercel**: Only JSON metadata passes through our API routes
+- **No payload limits**: Google Drive handles the actual file upload
+- **Progress tracking**: XMLHttpRequest monitors upload directly to Google Drive
+- **True resumable uploads**: Uses Google Drive's native resumable upload API
+
+## API Endpoints
+
+### `/api/upload/initiate` (POST)
+Creates a Google Drive resumable upload session.
+
+**Request:**
+```json
+{
+  "publication": "string",
+  "client": "string",
+  "campaign": "string",
+  "fileName": "string",
+  "fileSize": number,
+  "mimeType": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "uploadUrl": "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=..."
+}
+```
+
+### `/api/upload/complete` (POST)
+Verifies the upload completed successfully.
+
+**Request:**
+```json
+{
+  "fileId": "string"
+}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "file": {
+    "id": "string",
+    "name": "string",
+    "size": "string",
+    "mimeType": "string"
+  }
+}
+```
+
+### `/api/upload` (POST) - DEPRECATED
+⚠️ Limited to ~4.5MB due to Vercel payload limits. Use `/api/upload/initiate` instead.
 
 ## Configuration Constants
-
-### Server-Side (`lib/google.ts`)
-```typescript
-RESUMABLE_UPLOAD_THRESHOLD = 5 * 1024 * 1024  // 5MB
-MAX_UPLOAD_RETRIES = 3
-INITIAL_RETRY_DELAY_MS = 1000  // Doubles each retry
-```
 
 ### Client-Side (`app/page.tsx`)
 ```typescript
@@ -18,29 +79,18 @@ UPLOAD_TIMEOUT_MS = 300000  // 5 minutes
 LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024  // 100MB
 ```
 
-### Route Configuration (`app/api/upload/route.ts`)
-```typescript
-maxDuration = 300  // 5 minutes (Vercel limit)
-```
-
 ### Body Size Limit (`next.config.js`)
 ```typescript
-bodySizeLimit: '500mb'
+bodySizeLimit: '5mb'  // Only for metadata operations, not file uploads
 ```
 
 ## Upload Strategy
 
-### Small Files (<5MB)
-- Uses simple upload method
-- Single request to Google Drive API
-- Fast and efficient for typical files
-- Retries up to 3 times on failure
-
-### Large Files (5MB-500MB)
-- Uses resumable upload method
+### All File Sizes
+- Uses Google Drive's resumable upload API
 - Progress tracking enabled
-- Server-side logging for debugging
-- Retries up to 3 times on failure
+- Direct browser-to-Google-Drive upload
+- **No size limit** (constrained only by Google Drive's 5TB/file limit)
 - Client shows progress bar and ETA
 
 ## User Experience
@@ -101,32 +151,59 @@ Upload failed (Status 500)
 ## Testing Recommendations
 
 ### Test File Sizes
-1. Small file: 1MB (should use simple upload)
-2. Medium file: 10MB (should use resumable upload)
-3. Large file: 100MB (should show warning + resumable)
-4. Very large file: 400MB (should work but take time)
+1. Small file: 1MB
+2. Medium file: 10MB
+3. Large file: 100MB (should show warning)
+4. Very large file: 1GB+ (tests Vercel bypass - no limit!)
 
 ### Test Scenarios
 1. **Normal upload**: Select file, click upload, verify success
 2. **Progress tracking**: Upload 100MB file, verify progress bar updates
-3. **Cancel/refresh**: Start upload, refresh page (file should be orphaned but no corruption)
-4. **Network interruption**: Disconnect WiFi mid-upload, verify retry works
+3. **Cancel/refresh**: Start upload, refresh page (Google Drive may have partial upload)
+4. **Network interruption**: Disconnect WiFi mid-upload (Google Drive handles resumption)
 5. **Multiple uploads**: Upload several files in sequence
+6. **Vercel bypass verification**: Upload 10MB file, check network tab - file should go directly to googleapis.com
 
 ### Expected Timings
 - 1MB file: <5 seconds
 - 10MB file: 10-30 seconds
 - 100MB file: 1-3 minutes
-- 400MB file: 3-8 minutes
+- 1GB file: 10-30 minutes
 (Varies based on connection speed)
+
+## Architecture Verification
+
+### How to Verify Vercel Bypass
+1. Open browser DevTools → Network tab
+2. Start file upload
+3. Look for requests:
+   - ✅ `POST /api/upload/initiate` (small, <1KB)
+   - ✅ `PUT https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable...` (large, full file size)
+   - ✅ `POST /api/upload/complete` (small, <1KB)
+   - ❌ No `POST /api/upload` with large payload
+
+### File Flow Confirmation
+```
+Browser                    Vercel API              Google Drive
+   |                          |                         |
+   |-- metadata (1KB) ------->|                         |
+   |                          |-- create session ------>|
+   |<------ upload URL --------|<----- session URL -----|
+   |                          |                         |
+   |------------- file data (direct) ----------------->|
+   |                          |                         |
+   |-- file ID (1KB) -------->|                         |
+   |                          |-- verify ------------>|
+   |<------ success -----------|<----- metadata --------|
+```
 
 ## Future Enhancements
 
-### For Files >500MB
+### Chunked Uploads (for >5GB files)
 Consider implementing:
-1. Chunked file reading (avoid loading entire file in memory)
-2. True resumable uploads with session management
-3. Parallel chunk uploads
+1. Client-side chunking (256MB chunks)
+2. Parallel chunk uploads
+3. Chunk-level resume on failure
 4. Pause/resume functionality
 5. Background upload queue
 

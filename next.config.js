@@ -4,8 +4,9 @@ const nextConfig = {
   experimental: { 
     serverActions: { 
       allowedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
-      // Increase body size limit for large file uploads (500MB)
-      bodySizeLimit: '500mb',
+      // Note: bodySizeLimit is not needed anymore as files are uploaded
+      // directly to Google Drive, bypassing Vercel's serverless functions
+      bodySizeLimit: '5mb', // Only for metadata/config operations
     } 
   },
 };

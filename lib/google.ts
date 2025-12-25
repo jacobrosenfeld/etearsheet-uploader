@@ -334,3 +334,101 @@ async function uploadLargeFileResumable(drive: any, file: File, filename: string
   console.log(`[uploadLargeFileResumable] Upload completed: ${created.data.id}`);
   return created.data;
 }
+
+// ============================================================================
+// DIRECT CLIENT-TO-GOOGLE-DRIVE UPLOAD (Bypasses Vercel payload limits)
+// ============================================================================
+
+/**
+ * Initiates a resumable upload session with Google Drive.
+ * Returns an upload URL that the client can use to upload directly to Google Drive.
+ * 
+ * This bypasses Vercel's ~4.5MB payload limit by having the client upload
+ * the file directly to Google Drive, not through our serverless function.
+ */
+export async function initiateResumableUpload(opts: {
+  client: string;
+  campaign: string;
+  publication: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+}): Promise<string> {
+  const drive = getDriveClient();
+  
+  // Ensure the folder path exists
+  const parentId = await ensureFolderPath({
+    client: opts.client,
+    campaign: opts.campaign,
+    publication: opts.publication
+  });
+
+  // Create filename with publication_date_originalname format
+  const today = new Date().toISOString().split('T')[0];
+  const originalName = opts.fileName;
+  const fileExtension = originalName.substring(originalName.lastIndexOf('.'));
+  const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
+  const filename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
+
+  console.log(`[initiateResumableUpload] Initiating upload for ${filename}, size: ${opts.fileSize}`);
+
+  // Get the auth client to make the request
+  const auth = await drive.context._options.auth as any;
+  const authClient = await auth.getClient();
+  const accessToken = await authClient.getAccessToken();
+
+  if (!accessToken.token) {
+    throw new Error('Failed to get access token for Google Drive');
+  }
+
+  // Initiate resumable upload session
+  // https://developers.google.com/drive/api/guides/manage-uploads#resumable
+  const initResponse = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken.token}`,
+      'Content-Type': 'application/json; charset=UTF-8',
+      'X-Upload-Content-Type': opts.mimeType,
+      'X-Upload-Content-Length': opts.fileSize.toString(),
+    },
+    body: JSON.stringify({
+      name: filename,
+      parents: [parentId],
+      mimeType: opts.mimeType
+    })
+  });
+
+  if (!initResponse.ok) {
+    const errorText = await initResponse.text();
+    console.error('[initiateResumableUpload] Failed to initiate upload:', errorText);
+    throw new Error(`Failed to initiate resumable upload: ${initResponse.status} ${errorText}`);
+  }
+
+  // The Location header contains the upload URL
+  const uploadUrl = initResponse.headers.get('Location');
+  if (!uploadUrl) {
+    throw new Error('No upload URL returned from Google Drive');
+  }
+
+  console.log(`[initiateResumableUpload] Upload session created: ${uploadUrl}`);
+  return uploadUrl;
+}
+
+/**
+ * Verifies that a file was successfully uploaded to Google Drive
+ * and returns its metadata.
+ */
+export async function verifyUploadCompletion(fileId: string) {
+  const drive = getDriveClient();
+  
+  console.log(`[verifyUploadCompletion] Verifying file: ${fileId}`);
+  
+  const fileMetadata = await drive.files.get({
+    fileId: fileId,
+    fields: 'id, name, mimeType, size, createdTime',
+    supportsAllDrives: true
+  });
+
+  console.log(`[verifyUploadCompletion] File verified: ${fileMetadata.data.name}`);
+  return fileMetadata.data;
+}
