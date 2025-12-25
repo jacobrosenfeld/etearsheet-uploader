@@ -7,6 +7,22 @@ body { @apply bg-neutral-100 text-neutral-900; }
 .card { @apply bg-white shadow rounded-2xl p-6; }
 .btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm border; }
 .btn-primary { @apply btn bg-black text-white border-black; }
+.btn-secondary { @apply btn bg-gray-200 text-gray-700 border-gray-200; }
 .btn-ghost { @apply btn bg-transparent border-transparent; }
 .input { @apply w-full border rounded-xl px-3 py-2; }
 .label { @apply text-sm font-semibold text-neutral-600; }
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}

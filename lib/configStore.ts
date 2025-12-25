@@ -72,12 +72,13 @@ export async function readConfig(): Promise<PortalConfig> {
     
     const url = await findConfigUrl();
     if (!url) {
-      // Not created yet — return empty
+      // Not created yet — return empty with initial notification
       return { 
         clients: [], 
         campaigns: [], 
         publications: [],
-        driveSettings: {}
+        driveSettings: {},
+        adminNotifications: getInitialNotifications()
       };
     }
     
@@ -99,11 +100,18 @@ export async function readConfig(): Promise<PortalConfig> {
       });
     };
     
+    // Ensure notifications exist
+    let notifications = json.adminNotifications || [];
+    if (notifications.length === 0) {
+      notifications = getInitialNotifications();
+    }
+    
     return {
       clients: migrateArray(json.clients ?? []),
       campaigns: migrateArray(json.campaigns ?? []),
       publications: migrateArray(json.publications ?? []),
       driveSettings: json.driveSettings ?? {},
+      adminNotifications: notifications,
     };
   } catch (e) {
     console.error('Error reading config:', e);
@@ -112,9 +120,24 @@ export async function readConfig(): Promise<PortalConfig> {
       clients: [], 
       campaigns: [], 
       publications: [],
-      driveSettings: {}
+      driveSettings: {},
+      adminNotifications: getInitialNotifications()
     };
   }
+}
+
+function getInitialNotifications() {
+  return [
+    {
+      id: 'v1.1.0-edit-feature',
+      version: '1.1.0',
+      title: '🎉 New Feature: Edit Names',
+      message: 'You can now edit client, campaign, and publication names directly! Click the pencil icon next to any item to enter edit mode, then use the checkmark to save or X to cancel.',
+      type: 'feature' as const,
+      createdAt: new Date('2025-12-25').toISOString(),
+      dismissedBy: []
+    }
+  ];
 }
 
 export async function writeConfig(nextCfg: PortalConfig): Promise<void> {

@@ -1,5 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { NotificationPopup, NotificationPanel } from '@/app/components/Notifications';
+
+type AdminNotification = {
+  id: string;
+  version: string;
+  title: string;
+  message: string;
+  type: 'feature' | 'update' | 'announcement';
+  createdAt: string;
+  dismissedBy?: string[];
+};
 
 type PortalConfig = {
   clients: Array<{ name: string; hidden?: boolean }>;
@@ -11,6 +22,7 @@ type PortalConfig = {
     isConfigured?: boolean;
     parentFolderUrl?: string;
   };
+  adminNotifications?: AdminNotification[];
 };
 
 export default function AdminPage() {
@@ -18,7 +30,8 @@ export default function AdminPage() {
     clients: [], 
     campaigns: [], 
     publications: [],
-    driveSettings: {}
+    driveSettings: {},
+    adminNotifications: []
   });
   const [status, setStatus] = useState('');
   const [verifyStatus, setVerifyStatus] = useState<any>(null);
@@ -27,21 +40,49 @@ export default function AdminPage() {
   const [newItemValue, setNewItemValue] = useState('');
   const [editingItem, setEditingItem] = useState<{ type: 'clients' | 'campaigns' | 'publications'; index: number; } | null>(null);
   const [editItemValue, setEditItemValue] = useState('');
+  const [showNotificationPanel, setShowNotificationPanel] = useState(false);
+  const [popupNotification, setPopupNotification] = useState<AdminNotification | null>(null);
+  const [adminId, setAdminId] = useState<string>('');
+
+  // Generate a unique admin ID for this session (in a real app, this would come from auth)
+  useEffect(() => {
+    let id = localStorage.getItem('adminSessionId');
+    if (!id) {
+      id = `admin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('adminSessionId', id);
+    }
+    setAdminId(id);
+  }, []);
 
   useEffect(() => {
-    fetch('/api/config')
-      .then(res => res.json())
-      .then(data => {
-        if (!data.error) {
-          setCfg({
-            clients: data.clients || [],
-            campaigns: data.campaigns || [],
-            publications: data.publications || [],
-            driveSettings: data.driveSettings || {}
-          });
+    async function loadConfig() {
+      const res = await fetch('/api/config');
+      const data = await res.json();
+      if (!data.error) {
+        setCfg({
+          clients: data.clients || [],
+          campaigns: data.campaigns || [],
+          publications: data.publications || [],
+          driveSettings: data.driveSettings || {},
+          adminNotifications: data.adminNotifications || []
+        });
+
+        // Check for unread notifications
+        if (adminId && data.adminNotifications) {
+          const unreadNotification = data.adminNotifications.find(
+            (n: AdminNotification) => !n.dismissedBy?.includes(adminId)
+          );
+          if (unreadNotification) {
+            setPopupNotification(unreadNotification);
+          }
         }
-      });
-  }, []);
+      }
+    }
+    
+    if (adminId) {
+      loadConfig();
+    }
+  }, [adminId]);
 
   async function saveConfig() {
     setStatus('Saving...');
@@ -206,8 +247,38 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
+      {/* Notification Popup */}
+      {popupNotification && (
+        <NotificationPopup
+          notification={popupNotification}
+          adminId={adminId}
+          onDismiss={() => setPopupNotification(null)}
+        />
+      )}
+
+      {/* Notification Panel */}
+      <NotificationPanel
+        isOpen={showNotificationPanel}
+        onClose={() => setShowNotificationPanel(false)}
+        adminId={adminId}
+      />
+
       <div className="card">
-        <h2 className="text-2xl font-bold mb-4">Admin Configuration</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-2xl font-bold">Admin Configuration</h2>
+          <button
+            onClick={() => setShowNotificationPanel(true)}
+            className="relative p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            title="View updates and announcements"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(adminId)) && (
+              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+            )}
+          </button>
+        </div>
 
         <div className="space-y-6">
           <div>
