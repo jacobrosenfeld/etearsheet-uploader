@@ -21,35 +21,16 @@ export default function AdminPage() {
   const [editItemValue, setEditItemValue] = useState('');
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const [popupNotification, setPopupNotification] = useState<AdminNotification | null>(null);
-  const [userId, setUserId] = useState<string>('');
+  const [adminSessionId, setAdminSessionId] = useState<string>('');
 
-  // Get user email for notification tracking
+  // Get or create admin session ID for notification tracking
   useEffect(() => {
-    async function fetchUserId() {
-      try {
-        // Fetch user email from server
-        const res = await fetch('/api/user-email');
-        const data = await res.json();
-        if (data.email) {
-          setUserId(data.email);
-          localStorage.setItem('adminUserId', data.email);
-        } else {
-          // Fallback to localStorage if server doesn't return email
-          const storedId = localStorage.getItem('adminUserId');
-          if (storedId) {
-            setUserId(storedId);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to fetch user email:', error);
-        // Fallback to localStorage
-        const storedId = localStorage.getItem('adminUserId');
-        if (storedId) {
-          setUserId(storedId);
-        }
-      }
+    let sessionId = localStorage.getItem('adminSessionId');
+    if (!sessionId) {
+      sessionId = `admin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('adminSessionId', sessionId);
     }
-    fetchUserId();
+    setAdminSessionId(sessionId);
   }, []);
 
   useEffect(() => {
@@ -66,11 +47,11 @@ export default function AdminPage() {
         });
 
         // Check for unread notifications matching current version
-        if (userId && data.adminNotifications) {
+        if (adminSessionId && data.adminNotifications) {
           const currentVersionNotification = data.adminNotifications.find(
             (n: AdminNotification) => 
               n.version === packageJson.version && 
-              !n.dismissedBy?.includes(userId)
+              !n.dismissedBy?.includes(adminSessionId)
           );
           if (currentVersionNotification) {
             setPopupNotification(currentVersionNotification);
@@ -79,10 +60,10 @@ export default function AdminPage() {
       }
     }
     
-    if (userId) {
+    if (adminSessionId) {
       loadConfig();
     }
-  }, [userId]);
+  }, [adminSessionId]);
 
   async function saveConfig() {
     setStatus('Saving...');
@@ -110,6 +91,34 @@ export default function AdminPage() {
       setStatus('Save failed');
     }
   }
+
+  const dismissNotification = async (id: string) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, adminId: adminSessionId })
+      });
+      
+      if (res.ok) {
+        setPopupNotification(null);
+        // Reload config to get updated dismissed status
+        const reloadRes = await fetch('/api/config');
+        const reloadData = await reloadRes.json();
+        if (!reloadData.error) {
+          setCfg({
+            clients: reloadData.clients || [],
+            campaigns: reloadData.campaigns || [],
+            publications: reloadData.publications || [],
+            driveSettings: reloadData.driveSettings || {},
+            adminNotifications: reloadData.adminNotifications || []
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to dismiss notification:', error);
+    }
+  };
 
   function addItem(type: 'clients' | 'campaigns' | 'publications') {
     const value = prompt(`Enter new ${type.slice(0, -1)}:`);
@@ -252,8 +261,8 @@ export default function AdminPage() {
       {popupNotification && (
         <NotificationPopup
           notification={popupNotification}
-          userId={userId}
-          onDismiss={() => setPopupNotification(null)}
+          adminId={adminSessionId}
+          onDismiss={() => dismissNotification(popupNotification.id)}
         />
       )}
 
@@ -261,7 +270,9 @@ export default function AdminPage() {
       <NotificationPanel
         isOpen={showNotificationPanel}
         onClose={() => setShowNotificationPanel(false)}
-        userId={userId}
+        adminId={adminSessionId}
+        notifications={cfg.adminNotifications || []}
+        onDismiss={dismissNotification}
       />
 
       <div className="card">
@@ -275,7 +286,7 @@ export default function AdminPage() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(userId)) && (
+            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(adminSessionId)) && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             )}
           </button>

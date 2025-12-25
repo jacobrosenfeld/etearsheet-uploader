@@ -40,9 +40,3 @@ export async function getRole() {
 export async function clearSession() {
   (await cookies()).delete('session');
 }
-
-export function getUserEmail(): string | null {
-  // In production, this would come from authentication
-  // For now, use the impersonated user email from environment
-  return process.env.GOOGLE_IMPERSONATE_USER || null;
-}

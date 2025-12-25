@@ -31,32 +31,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { notificationId, action, userId } = body;
+    const { id, adminId } = body;
 
-    if (!notificationId || !action || !userId) {
+    if (!id || !adminId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
     const cfg = await readConfig();
     const notifications = cfg.adminNotifications || [];
 
-    if (action === 'dismiss') {
-      // Mark notification as dismissed for this user
-      const notification = notifications.find(n => n.id === notificationId);
-      if (notification) {
-        if (!notification.dismissedBy) {
-          notification.dismissedBy = [];
-        }
-        if (!notification.dismissedBy.includes(userId)) {
-          notification.dismissedBy.push(userId);
-        }
+    // Mark notification as dismissed for this admin
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+      if (!notification.dismissedBy) {
+        notification.dismissedBy = [];
       }
-
-      await writeConfig({ ...cfg, adminNotifications: notifications });
-      return NextResponse.json({ success: true });
+      if (!notification.dismissedBy.includes(adminId)) {
+        notification.dismissedBy.push(adminId);
+      }
     }
 
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    await writeConfig({ ...cfg, adminNotifications: notifications });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error updating notification:', error);
     return NextResponse.json({ error: 'Failed to update notification' }, { status: 500 });

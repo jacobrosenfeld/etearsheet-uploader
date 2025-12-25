@@ -4,11 +4,11 @@ import { AdminNotification } from '@/lib/types';
 
 interface NotificationPopupProps {
   notification: AdminNotification;
-  userId: string;
+  adminId: string;
   onDismiss: () => void;
 }
 
-export function NotificationPopup({ notification, userId, onDismiss }: NotificationPopupProps) {
+export function NotificationPopup({ notification, adminId, onDismiss }: NotificationPopupProps) {
   const handleDismiss = async () => {
     try {
       await fetch('/api/notifications', {
@@ -17,7 +17,7 @@ export function NotificationPopup({ notification, userId, onDismiss }: Notificat
         body: JSON.stringify({
           notificationId: notification.id,
           action: 'dismiss',
-          userId
+          adminId
         })
       });
       onDismiss();
@@ -79,32 +79,15 @@ export function NotificationPopup({ notification, userId, onDismiss }: Notificat
 interface NotificationPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  userId: string;
+  adminId: string;
+  notifications: AdminNotification[];
+  onDismiss: (id: string) => void;
 }
 
 const MAX_DISPLAYED_NOTIFICATIONS = 3; // Maximum notifications shown in panel
 
-export function NotificationPanel({ isOpen, onClose, userId }: NotificationPanelProps) {
-  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (isOpen) {
-      loadNotifications();
-    }
-  }, [isOpen]);
-
-  const loadNotifications = async () => {
-    try {
-      const res = await fetch('/api/notifications');
-      const data = await res.json();
-      setNotifications(data.notifications || []);
-    } catch (error) {
-      console.error('Failed to load notifications:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+export function NotificationPanel({ isOpen, onClose, adminId, notifications, onDismiss }: NotificationPanelProps) {
+  if (!isOpen) return null;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -127,8 +110,6 @@ export function NotificationPanel({ isOpen, onClose, userId }: NotificationPanel
       day: 'numeric' 
     });
   };
-
-  if (!isOpen) return null;
 
   const displayedNotifications = notifications.slice(0, MAX_DISPLAYED_NOTIFICATIONS);
   const hasMore = notifications.length > MAX_DISPLAYED_NOTIFICATIONS;
@@ -153,18 +134,14 @@ export function NotificationPanel({ isOpen, onClose, userId }: NotificationPanel
         </div>
         
         <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : notifications.length === 0 ? (
+          {notifications.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p>No notifications yet</p>
             </div>
           ) : (
             <div className="space-y-4">
               {displayedNotifications.map((notification) => {
-                const isDismissed = notification.dismissedBy?.includes(userId);
+                const isDismissed = notification.dismissedBy?.includes(adminId);
                 return (
                   <div
                     key={notification.id}
