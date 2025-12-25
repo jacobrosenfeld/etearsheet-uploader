@@ -374,3 +374,115 @@ npm run lint         # Run ESLint
 - See `SETUP_GUIDE.md` for detailed setup instructions
 - See `CHANGELOG.md` for version history
 - See `.env.example` for example environment variables
+
+## Release & Notification Process
+
+### When to Release
+
+Release a new version when:
+- **Patch (x.x.1)**: Bug fixes, small improvements, documentation updates
+- **Minor (x.1.0)**: New features, significant improvements, API changes (backwards compatible)
+- **Major (1.x.0)**: Breaking changes, major refactors, incompatible API changes
+
+### Release Checklist
+
+1. **Determine Version Number**
+   - Review changes since last release
+   - Decide on patch/minor/major based on scope
+   - Follow semantic versioning (semver.org)
+
+2. **Update Version in Code**
+   - `package.json`: Update `version` field
+   - `app/layout.tsx`: Update version in footer display (e.g., `v1.2.0`)
+
+3. **Update CHANGELOG.md**
+   - Add new section at top with version and date
+   - Format: `## [X.Y.Z] - YYYY-MM-DD`
+   - Organize changes by category:
+     - **Added**: New features
+     - **Changed**: Changes to existing functionality
+     - **Fixed**: Bug fixes
+     - **Deprecated**: Soon-to-be-removed features
+     - **Removed**: Removed features
+     - **Security**: Security fixes
+   - Include admin notes if configuration or behavior changes
+   - Be specific and user-focused in descriptions
+
+4. **Create Admin Notification**
+   - Edit `lib/configStore.ts` → `getInitialNotifications()` function
+   - Add new notification at the TOP of the array (most recent first)
+   - Use unique ID format: `v{version}-{short-description}`
+   - Set appropriate type: `feature`, `update`, or `announcement`
+   - Keep message concise but informative (2-3 sentences)
+   - Set `dismissedBy: []` for new notifications
+   - Use date format: `new Date('YYYY-MM-DD').toISOString()`
+
+5. **Test Notification System**
+   - Clear `adminSessionId` from localStorage to test popup
+   - Verify popup appears once for new version
+   - Check notification panel shows limited view (max 3)
+   - Confirm "View full changelog" link works
+   - Verify dismiss functionality works
+
+### Admin Notification Guidelines
+
+**Notification Panel Behavior:**
+- Shows maximum 3 most recent notifications
+- Displays count if more notifications exist ("Showing 3 of 5 notifications")
+- "View full changelog" link directs to GitHub CHANGELOG.md
+- Dismissed notifications show "Read" badge but remain visible
+- Panel accessible from admin page notification icon
+
+**One-Time Popup Behavior:**
+- Appears automatically for admins on first visit after upgrade
+- Shows ONLY the newest unread notification
+- Dismissed via "Got it!" button
+- Never shows again for that admin (tracked by `adminSessionId` in localStorage)
+- Remains in notification panel history after dismissal
+
+**Notification Message Best Practices:**
+- Start with emoji relevant to type (🚀 feature, 🔔 update, 📢 announcement)
+- Clear, concise title (5-7 words max)
+- 2-3 sentence message explaining the change
+- Focus on user benefit, not technical details
+- Example: "You can now upload files of any size! The new chunked upload system supports files up to 5TB with real-time progress tracking."
+
+### Example Notification
+
+```typescript
+{
+  id: 'v1.2.0-large-file-upload',
+  version: '1.2.0',
+  title: '🚀 Large File Upload Support',
+  message: 'You can now upload files of any size! The new chunked upload system supports files up to 5TB with real-time progress tracking. Large files (>100MB) will show a warning and upload time estimate.',
+  type: 'feature' as const,
+  createdAt: new Date('2025-12-25').toISOString(),
+  dismissedBy: []
+}
+```
+
+### Deploying a Release
+
+1. Commit all version/changelog/notification changes
+2. Push to main branch or create PR
+3. Vercel automatically deploys on merge
+4. Test in production:
+   - Verify version in footer
+   - Test notification popup (clear localStorage first)
+   - Verify new feature works as expected
+   - Check admin panel notification list
+
+### Post-Release
+
+1. Monitor for issues or user feedback
+2. Document any discovered issues in GitHub issues
+3. Plan hotfix if critical bug found (patch version)
+4. Update documentation if needed
+
+### Version History Reference
+
+Track all versions in CHANGELOG.md, even minor patches. This serves as:
+- Historical record of changes
+- Source for "View full changelog" link
+- Reference for future development
+- User-facing documentation of improvements

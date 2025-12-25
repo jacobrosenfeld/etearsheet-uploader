@@ -129,6 +129,15 @@ export async function readConfig(): Promise<PortalConfig> {
 function getInitialNotifications() {
   return [
     {
+      id: 'v1.2.0-large-file-upload',
+      version: '1.2.0',
+      title: '🚀 Large File Upload Support',
+      message: 'You can now upload files of any size! The new chunked upload system supports files up to 5TB with real-time progress tracking. Large files (>100MB) will show a warning and upload time estimate. Files are automatically split into 2MB chunks for reliable upload.',
+      type: 'feature' as const,
+      createdAt: new Date('2025-12-25').toISOString(),
+      dismissedBy: []
+    },
+    {
       id: 'v1.1.0-edit-feature',
       version: '1.1.0',
       title: '🎉 New Feature: Edit Names',

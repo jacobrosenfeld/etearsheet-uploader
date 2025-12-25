@@ -38,7 +38,7 @@ return (
 			<a href="/privacy" className="underline">Privacy Policy</a>
 		</div>
 		<div className="text-gray-700">Made with <span aria-hidden>❤️</span> in Teaneck, NJ</div>
-		<div className="text-gray-600">© {new Date().getFullYear()} JJA</div>
+		<div className="text-gray-600">© {new Date().getFullYear()} JJA • v1.2.0</div>
 		<div>
 			<a className="btn" href="mailto:admin@josephjacobs.org">Contact Support</a>
 		</div>

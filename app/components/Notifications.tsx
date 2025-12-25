@@ -85,6 +85,7 @@ interface NotificationPanelProps {
 export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
+  const maxDisplayed = 3; // Show max 3 notifications in panel
 
   useEffect(() => {
     if (isOpen) {
@@ -128,6 +129,9 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
 
   if (!isOpen) return null;
 
+  const displayedNotifications = notifications.slice(0, maxDisplayed);
+  const hasMore = notifications.length > maxDisplayed;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-white rounded-t-lg sm:rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] flex flex-col">
@@ -158,7 +162,7 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
             </div>
           ) : (
             <div className="space-y-4">
-              {notifications.map((notification) => {
+              {displayedNotifications.map((notification) => {
                 const isDismissed = notification.dismissedBy?.includes(adminId);
                 return (
                   <div
@@ -189,6 +193,13 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
                   </div>
                 );
               })}
+              {hasMore && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-600">
+                    Showing {maxDisplayed} of {notifications.length} notifications
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -196,7 +207,7 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
         <div className="p-4 border-t bg-gray-50 rounded-b-lg">
           <p className="text-xs text-gray-600 text-center">
             <a 
-              href="/CHANGELOG.md" 
+              href="https://github.com/jacobrosenfeld/etearsheet-uploader/blob/main/CHANGELOG.md" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"
