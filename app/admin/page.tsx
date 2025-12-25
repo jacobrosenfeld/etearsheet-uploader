@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { NotificationPopup, NotificationPanel } from '@/app/components/Notifications';
 import { AdminNotification, PortalConfig } from '@/lib/types';
+import packageJson from '../../package.json';
 
 export default function AdminPage() {
   const [cfg, setCfg] = useState<PortalConfig>({ 
@@ -20,16 +21,16 @@ export default function AdminPage() {
   const [editItemValue, setEditItemValue] = useState('');
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const [popupNotification, setPopupNotification] = useState<AdminNotification | null>(null);
-  const [adminId, setAdminId] = useState<string>('');
+  const [adminSessionId, setAdminSessionId] = useState<string>('');
 
-  // Generate a unique admin ID for this session (in a real app, this would come from auth)
+  // Get or create admin session ID for notification tracking
   useEffect(() => {
-    let id = localStorage.getItem('adminSessionId');
-    if (!id) {
-      id = `admin-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      localStorage.setItem('adminSessionId', id);
+    let sessionId = localStorage.getItem('adminSessionId');
+    if (!sessionId) {
+      sessionId = `admin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('adminSessionId', sessionId);
     }
-    setAdminId(id);
+    setAdminSessionId(sessionId);
   }, []);
 
   useEffect(() => {
@@ -45,22 +46,24 @@ export default function AdminPage() {
           adminNotifications: data.adminNotifications || []
         });
 
-        // Check for unread notifications
-        if (adminId && data.adminNotifications) {
-          const unreadNotification = data.adminNotifications.find(
-            (n: AdminNotification) => !n.dismissedBy?.includes(adminId)
+        // Check for unread notifications matching current version
+        if (adminSessionId && data.adminNotifications) {
+          const currentVersionNotification = data.adminNotifications.find(
+            (n: AdminNotification) => 
+              n.version === packageJson.version && 
+              !n.dismissedBy?.includes(adminSessionId)
           );
-          if (unreadNotification) {
-            setPopupNotification(unreadNotification);
+          if (currentVersionNotification) {
+            setPopupNotification(currentVersionNotification);
           }
         }
       }
     }
     
-    if (adminId) {
+    if (adminSessionId) {
       loadConfig();
     }
-  }, [adminId]);
+  }, [adminSessionId]);
 
   async function saveConfig() {
     setStatus('Saving...');
@@ -88,6 +91,34 @@ export default function AdminPage() {
       setStatus('Save failed');
     }
   }
+
+  const dismissNotification = async (id: string) => {
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, adminId: adminSessionId })
+      });
+      
+      if (res.ok) {
+        setPopupNotification(null);
+        // Reload config to get updated dismissed status
+        const reloadRes = await fetch('/api/config');
+        const reloadData = await reloadRes.json();
+        if (!reloadData.error) {
+          setCfg({
+            clients: reloadData.clients || [],
+            campaigns: reloadData.campaigns || [],
+            publications: reloadData.publications || [],
+            driveSettings: reloadData.driveSettings || {},
+            adminNotifications: reloadData.adminNotifications || []
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to dismiss notification:', error);
+    }
+  };
 
   function addItem(type: 'clients' | 'campaigns' | 'publications') {
     const value = prompt(`Enter new ${type.slice(0, -1)}:`);
@@ -230,8 +261,8 @@ export default function AdminPage() {
       {popupNotification && (
         <NotificationPopup
           notification={popupNotification}
-          adminId={adminId}
-          onDismiss={() => setPopupNotification(null)}
+          adminId={adminSessionId}
+          onDismiss={() => dismissNotification(popupNotification.id)}
         />
       )}
 
@@ -239,7 +270,9 @@ export default function AdminPage() {
       <NotificationPanel
         isOpen={showNotificationPanel}
         onClose={() => setShowNotificationPanel(false)}
-        adminId={adminId}
+        adminId={adminSessionId}
+        notifications={cfg.adminNotifications || []}
+        onDismiss={dismissNotification}
       />
 
       <div className="card">
@@ -253,7 +286,7 @@ export default function AdminPage() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(adminId)) && (
+            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(adminSessionId)) && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             )}
           </button>
@@ -707,11 +740,11 @@ export default function AdminPage() {
                     {process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_EMAIL || 'your-service-account@project.iam.gserviceaccount.com'}
                   </code>
                   <p className="text-yellow-700 mt-2">
-                    Give it <strong>"Editor"</strong> permissions. Without this, uploads will fail.
+                    Give it <strong>&quot;Editor&quot;</strong> permissions. Without this, uploads will fail.
                   </p>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use "JJA eTearsheets" in your root Drive.
+                  📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use &quot;JJA eTearsheets&quot; in your root Drive.
                 </p>
                 {cfg.driveSettings?.rootFolderName && (
                   <p className="text-xs text-green-600 mt-1">

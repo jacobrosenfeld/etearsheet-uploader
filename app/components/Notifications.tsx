@@ -80,29 +80,14 @@ interface NotificationPanelProps {
   isOpen: boolean;
   onClose: () => void;
   adminId: string;
+  notifications: AdminNotification[];
+  onDismiss: (id: string) => void;
 }
 
-export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPanelProps) {
-  const [notifications, setNotifications] = useState<AdminNotification[]>([]);
-  const [loading, setLoading] = useState(true);
+const MAX_DISPLAYED_NOTIFICATIONS = 3; // Maximum notifications shown in panel
 
-  useEffect(() => {
-    if (isOpen) {
-      loadNotifications();
-    }
-  }, [isOpen]);
-
-  const loadNotifications = async () => {
-    try {
-      const res = await fetch('/api/notifications');
-      const data = await res.json();
-      setNotifications(data.notifications || []);
-    } catch (error) {
-      console.error('Failed to load notifications:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+export function NotificationPanel({ isOpen, onClose, adminId, notifications, onDismiss }: NotificationPanelProps) {
+  if (!isOpen) return null;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -126,7 +111,8 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
     });
   };
 
-  if (!isOpen) return null;
+  const displayedNotifications = notifications.slice(0, MAX_DISPLAYED_NOTIFICATIONS);
+  const hasMore = notifications.length > MAX_DISPLAYED_NOTIFICATIONS;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4">
@@ -148,17 +134,13 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
         </div>
         
         <div className="flex-1 overflow-y-auto p-6">
-          {loading ? (
-            <div className="flex justify-center items-center py-12">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : notifications.length === 0 ? (
+          {notifications.length === 0 ? (
             <div className="text-center py-12 text-gray-500">
               <p>No notifications yet</p>
             </div>
           ) : (
             <div className="space-y-4">
-              {notifications.map((notification) => {
+              {displayedNotifications.map((notification) => {
                 const isDismissed = notification.dismissedBy?.includes(adminId);
                 return (
                   <div
@@ -189,6 +171,13 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
                   </div>
                 );
               })}
+              {hasMore && (
+                <div className="text-center pt-2">
+                  <p className="text-sm text-gray-600">
+                    Showing {MAX_DISPLAYED_NOTIFICATIONS} of {notifications.length} notifications
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

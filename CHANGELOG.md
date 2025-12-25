@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2025-12-25
+
+### Added
+- **Large File Upload Support**: Chunked upload architecture supports files up to 5TB (Google Drive's limit)
+  - 2MB chunks with backend proxy bypass Vercel's 4.5MB payload limit
+  - Real-time progress tracking with percentage and estimated time remaining
+  - File size display in human-readable format (KB/MB/GB)
+  - Large file warning banner for uploads >100MB
+  - Automatic retry logic with exponential backoff (3 attempts)
+  - Enhanced error messages distinguishing network failures, timeouts, and server errors
+- **New API Endpoints**: `/api/upload/initiate`, `/api/upload/proxy`, `/api/upload/complete`
+- **Progress Feedback**: Real-time progress bar during uploads
+- **Retry Logic**: Automatic retry on transient failures with exponential backoff
+- **Version Display**: Application version now shown in footer
+- **Limited Notification Panel**: Shows max 3 recent notifications with "View full changelog" link
+
+### Changed
+- **Upload Architecture**: Migrated from single-request to chunked upload approach
+- **Body Size Limit**: Reduced from 500MB to 3MB (only handles chunks and metadata now)
+- **Google Drive Integration**: Uses resumable upload protocol with Content-Range headers
+- **Notification Panel**: Limited to 3 most recent items for better UX
+
+### Fixed
+- **413 Errors**: Files >4.5MB no longer fail with FUNCTION_PAYLOAD_TOO_LARGE
+- **CORS Errors**: Backend proxy eliminates browser CORS restrictions  
+- **Timeout Issues**: Chunked approach prevents timeouts on large files
+- **Content-Range Errors**: Correct byte offset calculation ensures sequential chunk uploads
+- **Progress Feedback**: Users now receive real-time feedback during uploads
+
+### Admin Notes
+- Chunked uploads work automatically - no configuration needed
+- Small files (<2MB) upload in a single chunk for efficiency
+- Network tab will show multiple `/api/upload/proxy` requests (one per chunk)
+- Typical performance: ~1-2 minutes per 50MB file
+
 ## [1.1.0] - 2025-12-25
 
 ### Added

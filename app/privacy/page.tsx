@@ -26,7 +26,7 @@ export default function PrivacyPage() {
 
       <section className="mb-6">
         <h2 className="text-xl font-semibold mb-2">Third-Party Services</h2>
-        <p className="text-neutral-700">This project integrates with Google Drive (Google LLC) and uses Vercel's blob storage. Please review their privacy policies for details about their data handling practices.</p>
+        <p className="text-neutral-700">This project integrates with Google Drive (Google LLC) and uses Vercel&apos;s blob storage. Please review their privacy policies for details about their data handling practices.</p>
       </section>
 
       <section className="mb-6">
