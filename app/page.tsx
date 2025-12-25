@@ -102,10 +102,25 @@ export default function HomePage() {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
               // Google Drive returns the file metadata on success
-              const responseData = JSON.parse(xhr.response);
-              resolve(responseData.id); // File ID from Google Drive
-            } catch {
-              reject(new Error('Invalid response from Google Drive'));
+              // Response might be empty or contain JSON
+              if (xhr.response && xhr.response.trim()) {
+                const responseData = JSON.parse(xhr.response);
+                if (responseData.id) {
+                  resolve(responseData.id); // File ID from Google Drive
+                  return;
+                }
+              }
+              // If no file ID in response, we'll need to extract it from the upload URL
+              // The upload URL format: https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=xxx
+              // We need to query Google Drive to find the file or rely on verification step
+              console.log('Upload completed but no file ID in response, will verify in next step');
+              resolve('uploaded'); // Placeholder - verification step will get the actual ID
+            } catch (parseError) {
+              console.error('Error parsing Google Drive response:', parseError);
+              console.log('Response text:', xhr.response);
+              // Upload might have succeeded even if response parsing failed
+              // Let the verification step handle it
+              resolve('uploaded');
             }
           } else {
             reject(new Error(`Upload failed (Status ${xhr.status})`));
@@ -128,11 +143,18 @@ export default function HomePage() {
       
       const fileId = await uploadWithProgress;
       
-      // Step 3: Verify upload completion with our backend (optional but recommended)
+      // Step 3: Verify upload completion with our backend
+      // This is essential now since we might not get file ID from Google Drive response
       const verifyRes = await fetch('/api/upload/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ fileId })
+        body: JSON.stringify({ 
+          fileId: fileId !== 'uploaded' ? fileId : undefined,
+          fileName: file.name,
+          client: client,
+          campaign: campaign,
+          publication: pub
+        })
       });
 
       if (verifyRes.ok) {

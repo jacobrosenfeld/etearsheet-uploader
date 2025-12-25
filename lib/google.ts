@@ -432,3 +432,54 @@ export async function verifyUploadCompletion(fileId: string) {
   console.log(`[verifyUploadCompletion] File verified: ${fileMetadata.data.name}`);
   return fileMetadata.data;
 }
+
+/**
+ * Finds a recently uploaded file in Google Drive by searching in the target folder.
+ * This is used when the file ID is not returned from the upload response.
+ */
+export async function findRecentUpload(opts: {
+  fileName: string;
+  client: string;
+  campaign: string;
+  publication: string;
+}) {
+  const drive = getDriveClient();
+  
+  // Ensure the folder path exists
+  const parentId = await ensureFolderPath({
+    client: opts.client,
+    campaign: opts.campaign,
+    publication: opts.publication
+  });
+
+  // Create the expected filename pattern
+  const today = new Date().toISOString().split('T')[0];
+  const originalName = opts.fileName;
+  const fileExtension = originalName.substring(originalName.lastIndexOf('.'));
+  const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
+  const expectedFilename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
+
+  console.log(`[findRecentUpload] Searching for file: ${expectedFilename} in folder: ${parentId}`);
+
+  // Search for the file in the target folder (created within the last 5 minutes)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const query = `name='${expectedFilename}' and '${parentId}' in parents and trashed=false and createdTime > '${fiveMinutesAgo}'`;
+  
+  const searchResult = await drive.files.list({
+    q: query,
+    fields: 'files(id, name, mimeType, size, createdTime)',
+    orderBy: 'createdTime desc',
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true
+  });
+
+  if (!searchResult.data.files || searchResult.data.files.length === 0) {
+    console.error(`[findRecentUpload] File not found: ${expectedFilename}`);
+    throw new Error(`Uploaded file not found. Expected: ${expectedFilename}`);
+  }
+
+  const file = searchResult.data.files[0];
+  console.log(`[findRecentUpload] File found: ${file.name} (${file.id})`);
+  return file;
+}

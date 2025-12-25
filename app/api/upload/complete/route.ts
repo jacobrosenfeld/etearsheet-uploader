@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRole } from '@/lib/sessions';
-import { verifyUploadCompletion } from '@/lib/google';
+import { verifyUploadCompletion, findRecentUpload } from '@/lib/google';
 
 // This endpoint verifies that the file was successfully uploaded to Google Drive
 // and returns the file metadata
@@ -16,14 +16,24 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { fileId } = body;
+    const { fileId, fileName, client, campaign, publication } = body;
 
-    if (!fileId) {
-      return NextResponse.json({ error: 'Missing fileId' }, { status: 400 });
+    let fileMetadata;
+    
+    if (fileId && fileId !== 'uploaded') {
+      // We have a file ID, verify it directly
+      fileMetadata = await verifyUploadCompletion(fileId);
+    } else if (fileName && client && campaign && publication) {
+      // No file ID, need to find the file by name in the target folder
+      fileMetadata = await findRecentUpload({
+        fileName,
+        client,
+        campaign,
+        publication
+      });
+    } else {
+      return NextResponse.json({ error: 'Missing fileId or file location details' }, { status: 400 });
     }
-
-    // Verify the file exists in Google Drive
-    const fileMetadata = await verifyUploadCompletion(fileId);
 
     return NextResponse.json({ ok: true, file: fileMetadata });
   } catch (e: any) {
