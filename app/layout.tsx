@@ -1,6 +1,7 @@
 import './globals.css';
 import React from 'react';
 import { getRole } from '@/lib/sessions';
+import packageJson from '../package.json';
 
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -38,10 +39,13 @@ return (
 			<a href="/privacy" className="underline">Privacy Policy</a>
 		</div>
 		<div className="text-gray-700">Made with <span aria-hidden>❤️</span> in Teaneck, NJ</div>
-		<div className="text-gray-600">© {new Date().getFullYear()} JJA • v1.2.0</div>
+		<div className="text-gray-600">© {new Date().getFullYear()} JJA</div>
 		<div>
 			<a className="btn" href="mailto:admin@josephjacobs.org">Contact Support</a>
 		</div>
+	</div>
+	<div className="mt-2 text-xs text-gray-500">
+		<code className="bg-gray-100 px-2 py-1 rounded">v{packageJson.version}</code>
 	</div>
 </footer>
 </div>
