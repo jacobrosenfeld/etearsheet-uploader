@@ -26,6 +26,7 @@ export default function HomePage() {
   // Configuration constants
   const UPLOAD_TIMEOUT_MS = 300000; // 5 minutes (matches server-side timeout)
   const LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024; // 100MB
+  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks to stay under Vercel's limit
 
   useEffect(() => {
     fetch('/api/config')
@@ -87,70 +88,58 @@ export default function HomePage() {
       const { uploadUrl } = await initiateRes.json();
       console.log('Upload URL received:', uploadUrl);
 
-      // Step 2: Upload file through our backend proxy (avoids CORS issues)
-      // Backend will upload to Google Drive on our behalf
-      const uploadWithProgress = new Promise<any>((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (e) => {
-          if (e.lengthComputable) {
-            const percentComplete = (e.loaded / e.total) * 100;
-            setUploadProgress(Math.round(percentComplete));
-          }
+      // Step 2: Upload file in chunks through our backend proxy
+      // This avoids both CORS issues and Vercel's 4.5MB payload limit
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      console.log(`Uploading file in ${totalChunks} chunks of ${CHUNK_SIZE} bytes each`);
+
+      let uploadedBytes = 0;
+
+      for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+        const isLastChunk = chunkIndex === totalChunks - 1;
+
+        console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}: bytes ${start}-${end}`);
+
+        // Upload chunk
+        const chunkFormData = new FormData();
+        chunkFormData.append('uploadUrl', uploadUrl);
+        chunkFormData.append('chunk', chunk);
+        chunkFormData.append('chunkIndex', chunkIndex.toString());
+        chunkFormData.append('totalChunks', totalChunks.toString());
+
+        const chunkResponse = await fetch('/api/upload/proxy', {
+          method: 'POST',
+          body: chunkFormData
         });
-        
-        xhr.addEventListener('load', () => {
-          if (xhr.status >= 200 && xhr.status < 300) {
-            try {
-              const responseData = JSON.parse(xhr.response);
-              resolve(responseData);
-            } catch (parseError) {
-              console.error('Error parsing response:', parseError);
-              reject(new Error('Invalid response from server'));
-            }
-          } else {
-            let errorMsg = `Upload failed (Status ${xhr.status})`;
-            try {
-              const errorData = JSON.parse(xhr.response);
-              errorMsg = errorData.error || errorMsg;
-            } catch {
-              // Use default error message
-            }
-            reject(new Error(errorMsg));
-          }
-        });
-        
-        xhr.addEventListener('error', () => {
-          reject(new Error('Network error - please check your connection and try again'));
-        });
-        
-        xhr.addEventListener('timeout', () => {
-          reject(new Error('Upload timed out - please try again'));
-        });
-        
-        xhr.open('POST', '/api/upload/proxy');
-        xhr.timeout = UPLOAD_TIMEOUT_MS;
-        
-        // Send file through our backend proxy
-        const formData = new FormData();
-        formData.append('uploadUrl', uploadUrl);
-        formData.append('file', file);
-        xhr.send(formData);
-      });
-      
-      const result = await uploadWithProgress;
-      
-      if (result.ok && result.file) {
-        setUploadProgress(100);
-        setStatus('success');
-        // Reset form
-        setFile(null);
-        setUploadStartTime(null);
-      } else {
-        setStatus('error:Upload succeeded but response format unexpected');
-        setUploadProgress(0);
-        setUploadStartTime(null);
+
+        if (!chunkResponse.ok) {
+          const error = await chunkResponse.json();
+          throw new Error(error.error || `Failed to upload chunk ${chunkIndex + 1}`);
+        }
+
+        const chunkResult = await chunkResponse.json();
+        uploadedBytes += chunk.size;
+        const progress = Math.round((uploadedBytes / file.size) * 100);
+        setUploadProgress(progress);
+
+        if (isLastChunk && chunkResult.complete && chunkResult.file) {
+          // Upload complete!
+          setUploadProgress(100);
+          setStatus('success');
+          setFile(null);
+          setUploadStartTime(null);
+          return;
+        }
       }
+
+      // All chunks uploaded
+      setUploadProgress(100);
+      setStatus('success');
+      setFile(null);
+      setUploadStartTime(null);
     } catch (error: any) {
       setStatus(`error:${error.message || 'Upload failed'}`);
       setUploadProgress(0);

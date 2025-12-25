@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getRole } from '@/lib/sessions';
-import { uploadFileToGoogleDrive } from '@/lib/google';
+import { uploadChunkToGoogleDrive, finalizeChunkedUpload } from '@/lib/google';
 
-// This endpoint receives the file data and uploads it to Google Drive
-// This acts as a proxy to avoid CORS issues
+// This endpoint receives file chunks and uploads them to Google Drive
+// Supports chunked uploads to bypass Vercel's 4.5MB limit
 export const maxDuration = 300; // 5 minutes for large files
 export const dynamic = 'force-dynamic';
 
@@ -15,21 +15,35 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    // Get the upload URL and file from request
     const formData = await req.formData();
     const uploadUrl = formData.get('uploadUrl')?.toString();
-    const file = formData.get('file') as File;
+    const chunk = formData.get('chunk') as File;
+    const chunkIndex = parseInt(formData.get('chunkIndex')?.toString() || '0');
+    const totalChunks = parseInt(formData.get('totalChunks')?.toString() || '1');
+    const isLastChunk = chunkIndex === totalChunks - 1;
 
-    if (!uploadUrl || !file) {
-      return NextResponse.json({ error: 'Missing uploadUrl or file' }, { status: 400 });
+    if (!uploadUrl || !chunk) {
+      return NextResponse.json({ error: 'Missing uploadUrl or chunk' }, { status: 400 });
     }
 
-    // Upload the file to Google Drive using the upload URL
-    const fileMetadata = await uploadFileToGoogleDrive(uploadUrl, file);
+    // Upload chunk to Google Drive
+    const result = await uploadChunkToGoogleDrive({
+      uploadUrl,
+      chunk,
+      chunkIndex,
+      totalChunks,
+      isLastChunk
+    });
 
-    return NextResponse.json({ ok: true, file: fileMetadata });
+    if (isLastChunk && result.file) {
+      // Last chunk uploaded successfully, return file metadata
+      return NextResponse.json({ ok: true, file: result.file, complete: true });
+    } else {
+      // Chunk uploaded, but more chunks to come
+      return NextResponse.json({ ok: true, complete: false, chunkIndex });
+    }
   } catch (e: any) {
-    console.error('Error uploading to Google Drive:', e);
+    console.error('Error uploading chunk to Google Drive:', e);
     return NextResponse.json({ error: e?.message || 'Upload failed' }, { status: 500 });
   }
 }

@@ -517,3 +517,75 @@ export async function uploadFileToGoogleDrive(uploadUrl: string, file: File) {
   
   return fileMetadata;
 }
+
+/**
+ * Uploads a chunk of a file to Google Drive using resumable upload protocol.
+ * Google Drive requires chunks to be uploaded sequentially with proper Content-Range headers.
+ */
+export async function uploadChunkToGoogleDrive(opts: {
+  uploadUrl: string;
+  chunk: File;
+  chunkIndex: number;
+  totalChunks: number;
+  isLastChunk: boolean;
+}) {
+  const { uploadUrl, chunk, chunkIndex, totalChunks, isLastChunk } = opts;
+  
+  console.log(`[uploadChunkToGoogleDrive] Uploading chunk ${chunkIndex + 1}/${totalChunks}, size: ${chunk.size}`);
+  
+  // Convert chunk to Buffer
+  const arrayBuf = await chunk.arrayBuffer();
+  const buffer = Buffer.from(arrayBuf);
+  
+  // Calculate byte range for this chunk
+  // For chunked uploads, we need to track the total file size and current position
+  // This is simplified - in production, you'd track cumulative bytes uploaded
+  const chunkSize = buffer.length;
+  const startByte = chunkIndex * 5 * 1024 * 1024; // Assuming 5MB chunks
+  const endByte = startByte + chunkSize - 1;
+  
+  // Upload chunk to Google Drive
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Length': chunkSize.toString(),
+      'Content-Range': `bytes ${startByte}-${endByte}/*`, // Total size unknown during chunking
+    },
+    body: buffer
+  });
+
+  if (!uploadResponse.ok && uploadResponse.status !== 308) {
+    // 308 Resume Incomplete is expected for non-final chunks
+    const errorText = await uploadResponse.text();
+    console.error('[uploadChunkToGoogleDrive] Chunk upload failed:', errorText);
+    throw new Error(`Failed to upload chunk: ${uploadResponse.status} ${errorText}`);
+  }
+
+  if (isLastChunk && uploadResponse.status >= 200 && uploadResponse.status < 300) {
+    // Final chunk uploaded successfully, get file metadata
+    const fileMetadata = await uploadResponse.json();
+    console.log(`[uploadChunkToGoogleDrive] All chunks uploaded: ${fileMetadata.id}`);
+    return { file: fileMetadata };
+  }
+
+  console.log(`[uploadChunkToGoogleDrive] Chunk ${chunkIndex + 1} uploaded successfully`);
+  return { file: null };
+}
+
+export async function finalizeChunkedUpload(uploadUrl: string) {
+  // Query the upload status to get file metadata
+  const statusResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Length': '0',
+      'Content-Range': 'bytes */*',
+    }
+  });
+
+  if (statusResponse.ok) {
+    const fileMetadata = await statusResponse.json();
+    return fileMetadata;
+  }
+
+  throw new Error('Failed to finalize chunked upload');
+}

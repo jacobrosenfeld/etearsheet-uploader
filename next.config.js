@@ -4,9 +4,8 @@ const nextConfig = {
   experimental: { 
     serverActions: { 
       allowedOrigins: [process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"],
-      // Note: bodySizeLimit is not needed anymore as files are uploaded
-      // directly to Google Drive, bypassing Vercel's serverless functions
-      bodySizeLimit: '5mb', // Only for metadata/config operations
+      // Chunked uploads handle large files by sending them in pieces
+      bodySizeLimit: '10mb', // Each chunk up to 10MB
     } 
   },
 };
