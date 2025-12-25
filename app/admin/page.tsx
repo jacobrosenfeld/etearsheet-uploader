@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { NotificationPopup, NotificationPanel } from '@/app/components/Notifications';
-import { AdminNotification, PortalConfig } from '@/lib/types';
+import { VersionNotificationPopup, VersionNotificationPanel, VersionNotification } from '@/app/components/VersionNotifications';
+import { PortalConfig } from '@/lib/types';
 import packageJson from '../../package.json';
 
 export default function AdminPage() {
@@ -20,50 +20,67 @@ export default function AdminPage() {
   const [editingItem, setEditingItem] = useState<{ type: 'clients' | 'campaigns' | 'publications'; index: number; } | null>(null);
   const [editItemValue, setEditItemValue] = useState('');
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
-  const [popupNotification, setPopupNotification] = useState<AdminNotification | null>(null);
-  const [adminSessionId, setAdminSessionId] = useState<string>('');
-
-  // Get or create admin session ID for notification tracking
-  useEffect(() => {
-    let sessionId = localStorage.getItem('adminSessionId');
-    if (!sessionId) {
-      sessionId = `admin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('adminSessionId', sessionId);
-    }
-    setAdminSessionId(sessionId);
-  }, []);
+  
+  // New state for changelog-driven notifications
+  const [unseenVersions, setUnseenVersions] = useState<VersionNotification[]>([]);
+  const [recentVersions, setRecentVersions] = useState<VersionNotification[]>([]);
+  const [totalVersions, setTotalVersions] = useState(0);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    async function loadConfig() {
-      const res = await fetch('/api/config');
-      const data = await res.json();
-      if (!data.error) {
+    async function loadConfigAndState() {
+      // Load portal config
+      const configRes = await fetch('/api/config');
+      const configData = await configRes.json();
+      if (!configData.error) {
         setCfg({
-          clients: data.clients || [],
-          campaigns: data.campaigns || [],
-          publications: data.publications || [],
-          driveSettings: data.driveSettings || {},
-          adminNotifications: data.adminNotifications || []
+          clients: configData.clients || [],
+          campaigns: configData.campaigns || [],
+          publications: configData.publications || [],
+          driveSettings: configData.driveSettings || {},
+          adminNotifications: configData.adminNotifications || []
         });
+      }
 
-        // Check for unread notifications matching current version
-        if (adminSessionId && data.adminNotifications) {
-          const currentVersionNotification = data.adminNotifications.find(
-            (n: AdminNotification) => 
-              n.version === packageJson.version && 
-              !n.dismissedBy?.includes(adminSessionId)
-          );
-          if (currentVersionNotification) {
-            setPopupNotification(currentVersionNotification);
-          }
+      // Load admin state and unseen versions
+      const stateRes = await fetch('/api/admin-state');
+      const stateData = await stateRes.json();
+      if (!stateData.error) {
+        setUnseenVersions(stateData.unseenVersions || []);
+        setRecentVersions(stateData.recentVersions || []);
+        setTotalVersions(stateData.unseenVersions?.length || 0);
+        
+        // Show popup if there are unseen versions
+        if (stateData.hasUnseen) {
+          setShowPopup(true);
         }
       }
     }
     
-    if (adminSessionId) {
-      loadConfig();
+    loadConfigAndState();
+  }, []);
+
+  const dismissNotification = async () => {
+    try {
+      const res = await fetch('/api/admin-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          action: 'dismiss',
+          version: packageJson.version
+        })
+      });
+      
+      if (res.ok) {
+        setShowPopup(false);
+        setUnseenVersions([]);
+      }
+    } catch (error) {
+      console.error('Failed to dismiss notification:', error);
+      // Dismiss locally even if API fails
+      setShowPopup(false);
     }
-  }, [adminSessionId]);
+  };
 
   async function saveConfig() {
     setStatus('Saving...');
@@ -91,34 +108,6 @@ export default function AdminPage() {
       setStatus('Save failed');
     }
   }
-
-  const dismissNotification = async (id: string) => {
-    try {
-      const res = await fetch('/api/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, adminId: adminSessionId })
-      });
-      
-      if (res.ok) {
-        setPopupNotification(null);
-        // Reload config to get updated dismissed status
-        const reloadRes = await fetch('/api/config');
-        const reloadData = await reloadRes.json();
-        if (!reloadData.error) {
-          setCfg({
-            clients: reloadData.clients || [],
-            campaigns: reloadData.campaigns || [],
-            publications: reloadData.publications || [],
-            driveSettings: reloadData.driveSettings || {},
-            adminNotifications: reloadData.adminNotifications || []
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to dismiss notification:', error);
-    }
-  };
 
   function addItem(type: 'clients' | 'campaigns' | 'publications') {
     const value = prompt(`Enter new ${type.slice(0, -1)}:`);
@@ -257,22 +246,21 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      {/* Notification Popup */}
-      {popupNotification && (
-        <NotificationPopup
-          notification={popupNotification}
-          adminId={adminSessionId}
-          onDismiss={() => dismissNotification(popupNotification.id)}
+      {/* Version Notification Popup */}
+      {showPopup && unseenVersions.length > 0 && (
+        <VersionNotificationPopup
+          unseenVersions={unseenVersions}
+          currentVersion={packageJson.version}
+          onDismiss={dismissNotification}
         />
       )}
 
-      {/* Notification Panel */}
-      <NotificationPanel
+      {/* Version Notification Panel */}
+      <VersionNotificationPanel
         isOpen={showNotificationPanel}
         onClose={() => setShowNotificationPanel(false)}
-        adminId={adminSessionId}
-        notifications={cfg.adminNotifications || []}
-        onDismiss={dismissNotification}
+        recentVersions={recentVersions}
+        totalVersions={totalVersions}
       />
 
       <div className="card">
@@ -286,7 +274,7 @@ export default function AdminPage() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(adminSessionId)) && (
+            {unseenVersions.length > 0 && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             )}
           </button>

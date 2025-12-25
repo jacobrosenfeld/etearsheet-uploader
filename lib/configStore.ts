@@ -72,13 +72,13 @@ export async function readConfig(): Promise<PortalConfig> {
     
     const url = await findConfigUrl();
     if (!url) {
-      // Not created yet — return empty with initial notification
+      // Not created yet — return empty
       return { 
         clients: [], 
         campaigns: [], 
         publications: [],
         driveSettings: {},
-        adminNotifications: getInitialNotifications()
+        adminNotifications: []
       };
     }
     
@@ -100,11 +100,8 @@ export async function readConfig(): Promise<PortalConfig> {
       });
     };
     
-    // Ensure notifications exist
+    // Ensure notifications exist (empty for now - driven by changelog)
     let notifications = json.adminNotifications || [];
-    if (notifications.length === 0) {
-      notifications = getInitialNotifications();
-    }
     
     return {
       clients: migrateArray(json.clients ?? []),
@@ -121,32 +118,14 @@ export async function readConfig(): Promise<PortalConfig> {
       campaigns: [], 
       publications: [],
       driveSettings: {},
-      adminNotifications: getInitialNotifications()
+      adminNotifications: []
     };
   }
 }
 
+// Legacy function - notifications now driven by CHANGELOG.md
 function getInitialNotifications() {
-  return [
-    {
-      id: 'v1.2.0-large-file-upload',
-      version: '1.2.0',
-      title: '🚀 Large File Upload Support',
-      message: 'You can now upload files of any size! The new chunked upload system supports files up to 5TB with real-time progress tracking. Large files (>100MB) will show a warning and upload time estimate. Files are automatically split into 2MB chunks for reliable upload.',
-      type: 'feature' as const,
-      createdAt: new Date('2025-12-25').toISOString(),
-      dismissedBy: []
-    },
-    {
-      id: 'v1.1.0-edit-feature',
-      version: '1.1.0',
-      title: '🎉 New Feature: Edit Names',
-      message: 'You can now edit client, campaign, and publication names directly! Click the pencil icon next to any item to enter edit mode, then use the checkmark to save or X to cancel.',
-      type: 'feature' as const,
-      createdAt: new Date('2025-12-25').toISOString(),
-      dismissedBy: []
-    }
-  ];
+  return [];
 }
 
 export async function writeConfig(nextCfg: PortalConfig): Promise<void> {
