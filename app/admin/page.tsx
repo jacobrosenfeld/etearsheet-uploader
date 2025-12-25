@@ -1,29 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { NotificationPopup, NotificationPanel } from '@/app/components/Notifications';
-
-type AdminNotification = {
-  id: string;
-  version: string;
-  title: string;
-  message: string;
-  type: 'feature' | 'update' | 'announcement';
-  createdAt: string;
-  dismissedBy?: string[];
-};
-
-type PortalConfig = {
-  clients: Array<{ name: string; hidden?: boolean }>;
-  campaigns: Array<{ name: string; hidden?: boolean }>;
-  publications: Array<{ name: string; hidden?: boolean }>;
-  driveSettings?: {
-    rootFolderId?: string;
-    rootFolderName?: string;
-    isConfigured?: boolean;
-    parentFolderUrl?: string;
-  };
-  adminNotifications?: AdminNotification[];
-};
+import { AdminNotification, PortalConfig } from '@/lib/types';
 
 export default function AdminPage() {
   const [cfg, setCfg] = useState<PortalConfig>({ 
@@ -48,7 +26,7 @@ export default function AdminPage() {
   useEffect(() => {
     let id = localStorage.getItem('adminSessionId');
     if (!id) {
-      id = `admin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      id = `admin-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
       localStorage.setItem('adminSessionId', id);
     }
     setAdminId(id);
@@ -101,7 +79,8 @@ export default function AdminPage() {
           clients: reloadData.clients || [],
           campaigns: reloadData.campaigns || [],
           publications: reloadData.publications || [],
-          driveSettings: reloadData.driveSettings || {}
+          driveSettings: reloadData.driveSettings || {},
+          adminNotifications: reloadData.adminNotifications || []
         });
       }
       setTimeout(() => setStatus(''), 2000);

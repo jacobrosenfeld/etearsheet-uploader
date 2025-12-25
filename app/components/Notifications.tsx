@@ -1,15 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-
-type AdminNotification = {
-  id: string;
-  version: string;
-  title: string;
-  message: string;
-  type: 'feature' | 'update' | 'announcement';
-  createdAt: string;
-  dismissedBy?: string[];
-};
+import { AdminNotification } from '@/lib/types';
 
 interface NotificationPopupProps {
   notification: AdminNotification;
