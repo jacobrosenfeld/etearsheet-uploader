@@ -8,4 +8,15 @@ export type PortalConfig = {
     isConfigured?: boolean;
     parentFolderUrl?: string; // Google Drive folder URL for custom parent folder
   };
+  adminNotifications?: AdminNotification[];
+};
+
+export type AdminNotification = {
+  id: string;
+  version: string;
+  title: string;
+  message: string;
+  type: 'feature' | 'update' | 'announcement';
+  createdAt: string;
+  dismissedBy?: string[]; // Array of admin session identifiers who dismissed this
 };
