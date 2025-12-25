@@ -193,6 +193,11 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
   return publicationFolderId;
 }
 
+// Configuration constants
+const RESUMABLE_UPLOAD_THRESHOLD = 5 * 1024 * 1024; // 5MB - files larger than this use resumable upload
+const MAX_UPLOAD_RETRIES = 3; // Number of retry attempts
+const INITIAL_RETRY_DELAY_MS = 1000; // Initial delay before first retry (doubles each attempt)
+
 // Retry helper with exponential backoff
 async function retryWithBackoff<T>(
   fn: () => Promise<T>,
@@ -249,22 +254,20 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
 
   // For large files (>5MB), use resumable upload
   // For smaller files, use simple upload
-  const RESUMABLE_THRESHOLD = 5 * 1024 * 1024; // 5MB
-  
-  if (fileSize > RESUMABLE_THRESHOLD) {
+  if (fileSize > RESUMABLE_UPLOAD_THRESHOLD) {
     console.log('[uploadIntoPath] Using resumable upload for large file');
     return await retryWithBackoff(
       () => uploadLargeFileResumable(drive, opts.file, filename, parentId),
-      3,
-      2000,
+      MAX_UPLOAD_RETRIES,
+      INITIAL_RETRY_DELAY_MS * 2, // 2s for large files
       `Upload large file: ${filename}`
     );
   } else {
     console.log('[uploadIntoPath] Using simple upload for small file');
     return await retryWithBackoff(
       () => uploadSimpleFile(drive, opts.file, filename, parentId),
-      3,
-      1000,
+      MAX_UPLOAD_RETRIES,
+      INITIAL_RETRY_DELAY_MS,
       `Upload small file: ${filename}`
     );
   }
@@ -291,6 +294,11 @@ async function uploadSimpleFile(drive: any, file: File, filename: string, parent
   return created.data;
 }
 
+// Upload progress event type from googleapis
+interface UploadProgressEvent {
+  bytesRead: number;
+}
+
 // Resumable upload for large files
 async function uploadLargeFileResumable(drive: any, file: File, filename: string, parentId: string) {
   const fileSize = file.size;
@@ -298,7 +306,8 @@ async function uploadLargeFileResumable(drive: any, file: File, filename: string
   
   console.log(`[uploadLargeFileResumable] Starting resumable upload for ${filename}`);
   
-  // Convert File to Buffer in chunks to avoid memory issues
+  // Note: For truly massive files (>500MB), consider implementing chunked streaming
+  // For now, we load the file into memory but rely on Node.js streaming to Google Drive
   const arrayBuf = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuf);
   
@@ -316,7 +325,7 @@ async function uploadLargeFileResumable(drive: any, file: File, filename: string
     fields: 'id, name, mimeType, size',
   }, {
     // Enable resumable uploads
-    onUploadProgress: (evt: any) => {
+    onUploadProgress: (evt: UploadProgressEvent) => {
       const progress = (evt.bytesRead / fileSize) * 100;
       console.log(`[uploadLargeFileResumable] Upload progress: ${progress.toFixed(2)}%`);
     }

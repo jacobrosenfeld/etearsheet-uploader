@@ -23,6 +23,10 @@ export default function HomePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
 
+  // Configuration constants
+  const UPLOAD_TIMEOUT_MS = 300000; // 5 minutes (matches server-side timeout)
+  const LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024; // 100MB
+
   useEffect(() => {
     fetch('/api/config')
       .then(res => res.json())
@@ -106,7 +110,7 @@ export default function HomePage() {
         });
         
         xhr.open('POST', '/api/upload');
-        xhr.timeout = 300000; // 5 minutes timeout
+        xhr.timeout = UPLOAD_TIMEOUT_MS;
         xhr.send(form);
       });
       
@@ -177,7 +181,7 @@ export default function HomePage() {
                 <div className="text-xs text-gray-600">
                   Selected: {file.name} ({formatFileSize(file.size)})
                 </div>
-                {file.size > 100 * 1024 * 1024 && (
+                {file.size > LARGE_FILE_WARNING_THRESHOLD && (
                   <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
                     ⚠️ Large file detected ({formatFileSize(file.size)}). Upload may take several minutes.
                   </div>
