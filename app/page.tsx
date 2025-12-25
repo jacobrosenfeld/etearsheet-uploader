@@ -26,7 +26,7 @@ export default function HomePage() {
   // Configuration constants
   const UPLOAD_TIMEOUT_MS = 300000; // 5 minutes (matches server-side timeout)
   const LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024; // 100MB
-  const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks to stay under Vercel's limit
+  const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks to stay well under Vercel's 4.5MB limit
 
   useEffect(() => {
     fetch('/api/config')
