@@ -21,13 +21,16 @@ export async function POST(req: NextRequest) {
     const chunk = formData.get('chunk') as File;
     const chunkIndex = parseInt(formData.get('chunkIndex')?.toString() || '0');
     const totalChunks = parseInt(formData.get('totalChunks')?.toString() || '1');
+    const startByte = parseInt(formData.get('startByte')?.toString() || '0');
+    const endByte = parseInt(formData.get('endByte')?.toString() || '0');
+    const totalSize = parseInt(formData.get('totalSize')?.toString() || '0');
     const isLastChunk = chunkIndex === totalChunks - 1;
 
     if (!uploadUrl || !chunk) {
       return NextResponse.json({ error: 'Missing uploadUrl or chunk' }, { status: 400 });
     }
 
-    console.log(`[Proxy] Receiving chunk ${chunkIndex + 1}/${totalChunks}, size: ${chunk.size} bytes`);
+    console.log(`[Proxy] Receiving chunk ${chunkIndex + 1}/${totalChunks}, bytes ${startByte}-${endByte}, size: ${chunk.size} bytes`);
 
     // Verify chunk size is reasonable (<3MB to avoid Vercel limit)
     if (chunk.size > 3 * 1024 * 1024) {
@@ -43,6 +46,9 @@ export async function POST(req: NextRequest) {
       chunk,
       chunkIndex,
       totalChunks,
+      startByte,
+      endByte,
+      totalSize,
       isLastChunk
     });
 

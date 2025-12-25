@@ -109,6 +109,9 @@ export default function HomePage() {
         chunkFormData.append('chunk', chunk);
         chunkFormData.append('chunkIndex', chunkIndex.toString());
         chunkFormData.append('totalChunks', totalChunks.toString());
+        chunkFormData.append('startByte', start.toString());
+        chunkFormData.append('endByte', (end - 1).toString()); // end byte is inclusive
+        chunkFormData.append('totalSize', file.size.toString());
 
         const chunkResponse = await fetch('/api/upload/proxy', {
           method: 'POST',

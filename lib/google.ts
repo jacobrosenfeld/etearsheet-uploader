@@ -527,29 +527,32 @@ export async function uploadChunkToGoogleDrive(opts: {
   chunk: File;
   chunkIndex: number;
   totalChunks: number;
+  startByte: number;
+  endByte: number;
+  totalSize: number;
   isLastChunk: boolean;
 }) {
-  const { uploadUrl, chunk, chunkIndex, totalChunks, isLastChunk } = opts;
+  const { uploadUrl, chunk, chunkIndex, totalChunks, startByte, endByte, totalSize, isLastChunk } = opts;
   
-  console.log(`[uploadChunkToGoogleDrive] Uploading chunk ${chunkIndex + 1}/${totalChunks}, size: ${chunk.size}`);
+  console.log(`[uploadChunkToGoogleDrive] Uploading chunk ${chunkIndex + 1}/${totalChunks}, bytes ${startByte}-${endByte}/${totalSize}`);
   
   // Convert chunk to Buffer
   const arrayBuf = await chunk.arrayBuffer();
   const buffer = Buffer.from(arrayBuf);
   
-  // Calculate byte range for this chunk
-  // For chunked uploads, we need to track the total file size and current position
-  // This is simplified - in production, you'd track cumulative bytes uploaded
-  const chunkSize = buffer.length;
-  const startByte = chunkIndex * 5 * 1024 * 1024; // Assuming 5MB chunks
-  const endByte = startByte + chunkSize - 1;
+  // Verify the buffer size matches expected chunk size
+  const expectedSize = endByte - startByte + 1;
+  if (buffer.length !== expectedSize) {
+    console.error(`[uploadChunkToGoogleDrive] Size mismatch: buffer=${buffer.length}, expected=${expectedSize}`);
+    throw new Error(`Chunk size mismatch: got ${buffer.length} bytes, expected ${expectedSize}`);
+  }
   
-  // Upload chunk to Google Drive
+  // Upload chunk to Google Drive with proper Content-Range header
   const uploadResponse = await fetch(uploadUrl, {
     method: 'PUT',
     headers: {
-      'Content-Length': chunkSize.toString(),
-      'Content-Range': `bytes ${startByte}-${endByte}/*`, // Total size unknown during chunking
+      'Content-Length': buffer.length.toString(),
+      'Content-Range': `bytes ${startByte}-${endByte}/${totalSize}`,
     },
     body: buffer
   });
