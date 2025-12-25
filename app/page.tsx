@@ -85,16 +85,24 @@ export default function HomePage() {
               statusText: xhr.statusText
             }));
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
+            // Parse error response if available
+            let errorMsg = `Upload failed (Status ${xhr.status})`;
+            try {
+              const errorData = JSON.parse(xhr.response);
+              errorMsg = errorData.error || errorMsg;
+            } catch {
+              errorMsg = xhr.statusText || errorMsg;
+            }
+            reject(new Error(errorMsg));
           }
         });
         
         xhr.addEventListener('error', () => {
-          reject(new Error('Network error during upload'));
+          reject(new Error('Network error - please check your connection and try again'));
         });
         
         xhr.addEventListener('timeout', () => {
-          reject(new Error('Upload timed out'));
+          reject(new Error('Upload timed out - file may be too large or connection too slow. Please try again with a smaller file or better connection.'));
         });
         
         xhr.open('POST', '/api/upload');
@@ -111,8 +119,8 @@ export default function HomePage() {
         setFile(null);
         setUploadStartTime(null);
       } else {
-        const error = await res.json();
-        setStatus(`error:${error.error || 'Unknown error'}`);
+        const errorData = await res.json();
+        setStatus(`error:${errorData.error || 'Unknown error'}`);
         setUploadProgress(0);
         setUploadStartTime(null);
       }
@@ -165,8 +173,15 @@ export default function HomePage() {
             <label className="label">File</label>
             <input className="input" type="file" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
             {file && (
-              <div className="text-xs text-gray-600 mt-1">
-                Selected: {file.name} ({formatFileSize(file.size)})
+              <div className="mt-1 space-y-1">
+                <div className="text-xs text-gray-600">
+                  Selected: {file.name} ({formatFileSize(file.size)})
+                </div>
+                {file.size > 100 * 1024 * 1024 && (
+                  <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                    ⚠️ Large file detected ({formatFileSize(file.size)}). Upload may take several minutes.
+                  </div>
+                )}
               </div>
             )}
           </div>

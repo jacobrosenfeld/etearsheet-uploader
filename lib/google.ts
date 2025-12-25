@@ -193,6 +193,41 @@ async function ensureFolderPath(opts: { client: string; campaign: string; public
   return publicationFolderId;
 }
 
+// Retry helper with exponential backoff
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  initialDelayMs: number = 1000,
+  operation: string = 'Operation'
+): Promise<T> {
+  let lastError: any;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`[retryWithBackoff] ${operation} - Attempt ${attempt + 1}/${maxRetries + 1}`);
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      
+      // Don't retry on 404 or 403 (permission errors)
+      if (error?.code === 404 || error?.status === 404 || 
+          error?.code === 403 || error?.status === 403) {
+        console.error(`[retryWithBackoff] ${operation} - Non-retryable error:`, error?.message);
+        throw error;
+      }
+      
+      if (attempt < maxRetries) {
+        const delayMs = initialDelayMs * Math.pow(2, attempt);
+        console.warn(`[retryWithBackoff] ${operation} - Attempt ${attempt + 1} failed. Retrying in ${delayMs}ms...`, error?.message);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  console.error(`[retryWithBackoff] ${operation} - All ${maxRetries + 1} attempts failed`);
+  throw lastError;
+}
+
 export async function uploadIntoPath(opts: { file: File; client: string; campaign: string; publication: string; }) {
   const drive = getDriveClient();
   
@@ -218,10 +253,20 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
   
   if (fileSize > RESUMABLE_THRESHOLD) {
     console.log('[uploadIntoPath] Using resumable upload for large file');
-    return await uploadLargeFileResumable(drive, opts.file, filename, parentId);
+    return await retryWithBackoff(
+      () => uploadLargeFileResumable(drive, opts.file, filename, parentId),
+      3,
+      2000,
+      `Upload large file: ${filename}`
+    );
   } else {
     console.log('[uploadIntoPath] Using simple upload for small file');
-    return await uploadSimpleFile(drive, opts.file, filename, parentId);
+    return await retryWithBackoff(
+      () => uploadSimpleFile(drive, opts.file, filename, parentId),
+      3,
+      1000,
+      `Upload small file: ${filename}`
+    );
   }
 }
 
