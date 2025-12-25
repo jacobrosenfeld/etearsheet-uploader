@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { NotificationPopup, NotificationPanel } from '@/app/components/Notifications';
 import { AdminNotification, PortalConfig } from '@/lib/types';
+import packageJson from '../../package.json';
 
 export default function AdminPage() {
   const [cfg, setCfg] = useState<PortalConfig>({ 
@@ -20,16 +21,35 @@ export default function AdminPage() {
   const [editItemValue, setEditItemValue] = useState('');
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
   const [popupNotification, setPopupNotification] = useState<AdminNotification | null>(null);
-  const [adminId, setAdminId] = useState<string>('');
+  const [userId, setUserId] = useState<string>('');
 
-  // Generate a unique admin ID for this session (in a real app, this would come from auth)
+  // Get user email for notification tracking
   useEffect(() => {
-    let id = localStorage.getItem('adminSessionId');
-    if (!id) {
-      id = `admin-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
-      localStorage.setItem('adminSessionId', id);
+    async function fetchUserId() {
+      try {
+        // Fetch user email from server
+        const res = await fetch('/api/user-email');
+        const data = await res.json();
+        if (data.email) {
+          setUserId(data.email);
+          localStorage.setItem('adminUserId', data.email);
+        } else {
+          // Fallback to localStorage if server doesn't return email
+          const storedId = localStorage.getItem('adminUserId');
+          if (storedId) {
+            setUserId(storedId);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch user email:', error);
+        // Fallback to localStorage
+        const storedId = localStorage.getItem('adminUserId');
+        if (storedId) {
+          setUserId(storedId);
+        }
+      }
     }
-    setAdminId(id);
+    fetchUserId();
   }, []);
 
   useEffect(() => {
@@ -45,22 +65,24 @@ export default function AdminPage() {
           adminNotifications: data.adminNotifications || []
         });
 
-        // Check for unread notifications
-        if (adminId && data.adminNotifications) {
-          const unreadNotification = data.adminNotifications.find(
-            (n: AdminNotification) => !n.dismissedBy?.includes(adminId)
+        // Check for unread notifications matching current version
+        if (userId && data.adminNotifications) {
+          const currentVersionNotification = data.adminNotifications.find(
+            (n: AdminNotification) => 
+              n.version === packageJson.version && 
+              !n.dismissedBy?.includes(userId)
           );
-          if (unreadNotification) {
-            setPopupNotification(unreadNotification);
+          if (currentVersionNotification) {
+            setPopupNotification(currentVersionNotification);
           }
         }
       }
     }
     
-    if (adminId) {
+    if (userId) {
       loadConfig();
     }
-  }, [adminId]);
+  }, [userId]);
 
   async function saveConfig() {
     setStatus('Saving...');
@@ -230,7 +252,7 @@ export default function AdminPage() {
       {popupNotification && (
         <NotificationPopup
           notification={popupNotification}
-          adminId={adminId}
+          userId={userId}
           onDismiss={() => setPopupNotification(null)}
         />
       )}
@@ -239,7 +261,7 @@ export default function AdminPage() {
       <NotificationPanel
         isOpen={showNotificationPanel}
         onClose={() => setShowNotificationPanel(false)}
-        adminId={adminId}
+        userId={userId}
       />
 
       <div className="card">
@@ -253,7 +275,7 @@ export default function AdminPage() {
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(adminId)) && (
+            {cfg.adminNotifications && cfg.adminNotifications.some(n => !n.dismissedBy?.includes(userId)) && (
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             )}
           </button>

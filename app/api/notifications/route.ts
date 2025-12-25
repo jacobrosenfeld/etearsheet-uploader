@@ -31,9 +31,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { notificationId, action, adminId } = body;
+    const { notificationId, action, userId } = body;
 
-    if (!notificationId || !action || !adminId) {
+    if (!notificationId || !action || !userId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
@@ -41,14 +41,14 @@ export async function POST(req: NextRequest) {
     const notifications = cfg.adminNotifications || [];
 
     if (action === 'dismiss') {
-      // Mark notification as dismissed for this admin
+      // Mark notification as dismissed for this user
       const notification = notifications.find(n => n.id === notificationId);
       if (notification) {
         if (!notification.dismissedBy) {
           notification.dismissedBy = [];
         }
-        if (!notification.dismissedBy.includes(adminId)) {
-          notification.dismissedBy.push(adminId);
+        if (!notification.dismissedBy.includes(userId)) {
+          notification.dismissedBy.push(userId);
         }
       }
 

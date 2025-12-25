@@ -4,11 +4,11 @@ import { AdminNotification } from '@/lib/types';
 
 interface NotificationPopupProps {
   notification: AdminNotification;
-  adminId: string;
+  userId: string;
   onDismiss: () => void;
 }
 
-export function NotificationPopup({ notification, adminId, onDismiss }: NotificationPopupProps) {
+export function NotificationPopup({ notification, userId, onDismiss }: NotificationPopupProps) {
   const handleDismiss = async () => {
     try {
       await fetch('/api/notifications', {
@@ -17,7 +17,7 @@ export function NotificationPopup({ notification, adminId, onDismiss }: Notifica
         body: JSON.stringify({
           notificationId: notification.id,
           action: 'dismiss',
-          adminId
+          userId
         })
       });
       onDismiss();
@@ -79,12 +79,12 @@ export function NotificationPopup({ notification, adminId, onDismiss }: Notifica
 interface NotificationPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  adminId: string;
+  userId: string;
 }
 
 const MAX_DISPLAYED_NOTIFICATIONS = 3; // Maximum notifications shown in panel
 
-export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPanelProps) {
+export function NotificationPanel({ isOpen, onClose, userId }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -164,7 +164,7 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
           ) : (
             <div className="space-y-4">
               {displayedNotifications.map((notification) => {
-                const isDismissed = notification.dismissedBy?.includes(adminId);
+                const isDismissed = notification.dismissedBy?.includes(userId);
                 return (
                   <div
                     key={notification.id}
