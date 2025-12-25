@@ -16,7 +16,7 @@ interface VersionNotificationPopupProps {
 }
 
 /**
- * One-time popup that shows all unseen versions
+ * One-time popup that shows the last 2 unseen versions
  * Displays when there are unseen versions
  */
 export function VersionNotificationPopup({ 
@@ -44,6 +44,10 @@ export function VersionNotificationPopup({
     }
   };
 
+  // Show only the last 2 unseen versions to reduce scrolling
+  const displayVersions = unseenVersions.slice(0, 2);
+  const hasMore = unseenVersions.length > 2;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6 relative">
@@ -70,7 +74,7 @@ export function VersionNotificationPopup({
         </div>
         
         <div className="space-y-6">
-          {unseenVersions.map((versionInfo) => (
+          {displayVersions.map((versionInfo) => (
             <div key={versionInfo.version} className="border-b pb-4 last:border-b-0">
               <div className="flex items-center gap-2 mb-3">
                 <h3 className="text-lg font-semibold text-gray-800">
@@ -103,6 +107,13 @@ export function VersionNotificationPopup({
               </div>
             </div>
           ))}
+          {hasMore && (
+            <div className="text-center pt-2">
+              <p className="text-sm text-gray-600">
+                +{unseenVersions.length - 2} more version{unseenVersions.length - 2 > 1 ? 's' : ''} available
+              </p>
+            </div>
+          )}
         </div>
         
         <div className="mt-6 flex gap-3">
