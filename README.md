@@ -6,6 +6,8 @@ A Next.js app for secure eTearsheet uploads to Google Drive with password-protec
 
 - **Password-protected portal** - Two-tier access (portal password for uploads, admin password for configuration)
 - **Google Drive integration** - Service Account with domain-wide delegation for seamless uploads
+- **Large file support** - Handles files up to 500MB with progress tracking and automatic retry ([see docs](./LARGE_FILE_UPLOAD.md))
+- **Progress tracking** - Real-time upload progress with percentage and estimated time remaining
 - **Shared Drive support** - Works with both My Drive and Shared Drives
 - **Custom parent folder** - Configure a specific Google Drive folder as the root instead of default "JJA eTearsheets"
 - **Automatic folder hierarchy**: Custom Folder → Client → Campaign → Publication → Publication_date_filename.ext
