@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { uploadIntoPath } from '@/lib/google';
 import { getRole } from '@/lib/sessions';
 
+// Configure route for large file uploads
+// Increase timeout to 5 minutes for large files
+export const maxDuration = 300; // 5 minutes (Vercel Pro/Enterprise allows up to 300s)
+export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
   // Check if user is authenticated (both admin and regular users can upload)

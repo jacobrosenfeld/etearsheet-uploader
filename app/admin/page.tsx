@@ -707,11 +707,11 @@ export default function AdminPage() {
                     {process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_EMAIL || 'your-service-account@project.iam.gserviceaccount.com'}
                   </code>
                   <p className="text-yellow-700 mt-2">
-                    Give it <strong>"Editor"</strong> permissions. Without this, uploads will fail.
+                    Give it <strong>&quot;Editor&quot;</strong> permissions. Without this, uploads will fail.
                   </p>
                 </div>
                 <p className="text-xs text-gray-500 mt-2">
-                  📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use "JJA eTearsheets" in your root Drive.
+                  📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use &quot;JJA eTearsheets&quot; in your root Drive.
                 </p>
                 {cfg.driveSettings?.rootFolderName && (
                   <p className="text-xs text-green-600 mt-1">

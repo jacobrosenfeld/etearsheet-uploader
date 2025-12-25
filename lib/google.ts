@@ -202,9 +202,6 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
     publication: opts.publication
   });
 
-  const arrayBuf = await opts.file.arrayBuffer();
-  const buf = Buffer.from(arrayBuf);
-
   // Create filename with publication_date_originalname format
   const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
   const originalName = opts.file.name;
@@ -212,7 +209,26 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
   const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
   const filename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
 
-  // Convert buffer to readable stream
+  const fileSize = opts.file.size;
+  console.log(`[uploadIntoPath] Uploading file: ${filename}, size: ${fileSize} bytes`);
+
+  // For large files (>5MB), use resumable upload
+  // For smaller files, use simple upload
+  const RESUMABLE_THRESHOLD = 5 * 1024 * 1024; // 5MB
+  
+  if (fileSize > RESUMABLE_THRESHOLD) {
+    console.log('[uploadIntoPath] Using resumable upload for large file');
+    return await uploadLargeFileResumable(drive, opts.file, filename, parentId);
+  } else {
+    console.log('[uploadIntoPath] Using simple upload for small file');
+    return await uploadSimpleFile(drive, opts.file, filename, parentId);
+  }
+}
+
+// Simple upload for small files (original method)
+async function uploadSimpleFile(drive: any, file: File, filename: string, parentId: string) {
+  const arrayBuf = await file.arrayBuffer();
+  const buf = Buffer.from(arrayBuf);
   const stream = Readable.from(buf);
 
   const created = await drive.files.create({
@@ -221,11 +237,46 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
       parents: [parentId] 
     },
     media: { 
-      mimeType: opts.file.type || 'application/octet-stream', 
+      mimeType: file.type || 'application/octet-stream', 
       body: stream 
     },
     supportsAllDrives: true
   });
   
+  return created.data;
+}
+
+// Resumable upload for large files
+async function uploadLargeFileResumable(drive: any, file: File, filename: string, parentId: string) {
+  const fileSize = file.size;
+  const mimeType = file.type || 'application/octet-stream';
+  
+  console.log(`[uploadLargeFileResumable] Starting resumable upload for ${filename}`);
+  
+  // Convert File to Buffer in chunks to avoid memory issues
+  const arrayBuf = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuf);
+  
+  // Use resumable upload with Google Drive API
+  const created = await drive.files.create({
+    requestBody: {
+      name: filename,
+      parents: [parentId]
+    },
+    media: {
+      mimeType: mimeType,
+      body: Readable.from(buffer)
+    },
+    supportsAllDrives: true,
+    fields: 'id, name, mimeType, size',
+  }, {
+    // Enable resumable uploads
+    onUploadProgress: (evt: any) => {
+      const progress = (evt.bytesRead / fileSize) * 100;
+      console.log(`[uploadLargeFileResumable] Upload progress: ${progress.toFixed(2)}%`);
+    }
+  });
+
+  console.log(`[uploadLargeFileResumable] Upload completed: ${created.data.id}`);
   return created.data;
 }
