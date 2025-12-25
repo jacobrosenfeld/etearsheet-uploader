@@ -196,7 +196,7 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
         <div className="p-4 border-t bg-gray-50 rounded-b-lg">
           <p className="text-xs text-gray-600 text-center">
             <a 
-              href="/CHANGELOG.md" 
+              href="https://github.com/jacobrosenfeld/etearsheet-uploader/blob/main/CHANGELOG.md" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-blue-600 hover:underline"

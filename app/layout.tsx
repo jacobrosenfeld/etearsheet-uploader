@@ -1,6 +1,7 @@
 import './globals.css';
 import React from 'react';
 import { getRole } from '@/lib/sessions';
+import packageJson from '../package.json';
 
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -42,6 +43,9 @@ return (
 		<div>
 			<a className="btn" href="mailto:admin@josephjacobs.org">Contact Support</a>
 		</div>
+	</div>
+	<div className="mt-2 text-xs text-gray-500">
+		<code className="bg-gray-100 px-2 py-1 rounded">v{packageJson.version}</code>
 	</div>
 </footer>
 </div>
