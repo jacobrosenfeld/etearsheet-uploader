@@ -483,3 +483,37 @@ export async function findRecentUpload(opts: {
   console.log(`[findRecentUpload] File found: ${file.name} (${file.id})`);
   return file;
 }
+
+/**
+ * Uploads a file to Google Drive using a resumable upload URL.
+ * This function acts as a server-side proxy to avoid CORS issues.
+ */
+export async function uploadFileToGoogleDrive(uploadUrl: string, file: File) {
+  console.log(`[uploadFileToGoogleDrive] Uploading file: ${file.name}, size: ${file.size}`);
+  
+  // Convert File to Buffer
+  const arrayBuf = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuf);
+  
+  // Upload the file to Google Drive using the resumable upload URL
+  const uploadResponse = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': file.type || 'application/octet-stream',
+      'Content-Length': file.size.toString(),
+    },
+    body: buffer
+  });
+
+  if (!uploadResponse.ok) {
+    const errorText = await uploadResponse.text();
+    console.error('[uploadFileToGoogleDrive] Upload failed:', errorText);
+    throw new Error(`Failed to upload file: ${uploadResponse.status} ${errorText}`);
+  }
+
+  // Parse the response to get file metadata
+  const fileMetadata = await uploadResponse.json();
+  console.log(`[uploadFileToGoogleDrive] Upload completed: ${fileMetadata.id}`);
+  
+  return fileMetadata;
+}

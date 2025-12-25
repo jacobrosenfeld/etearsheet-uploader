@@ -87,8 +87,9 @@ export default function HomePage() {
       const { uploadUrl } = await initiateRes.json();
       console.log('Upload URL received:', uploadUrl);
 
-      // Step 2: Upload file directly to Google Drive (bypasses Vercel entirely)
-      const uploadWithProgress = new Promise<string>((resolve, reject) => {
+      // Step 2: Upload file through our backend proxy (avoids CORS issues)
+      // Backend will upload to Google Drive on our behalf
+      const uploadWithProgress = new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         
         xhr.upload.addEventListener('progress', (e) => {
@@ -101,29 +102,21 @@ export default function HomePage() {
         xhr.addEventListener('load', () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             try {
-              // Google Drive returns the file metadata on success
-              // Response might be empty or contain JSON
-              if (xhr.response && xhr.response.trim()) {
-                const responseData = JSON.parse(xhr.response);
-                if (responseData.id) {
-                  resolve(responseData.id); // File ID from Google Drive
-                  return;
-                }
-              }
-              // If no file ID in response, we'll need to extract it from the upload URL
-              // The upload URL format: https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&upload_id=xxx
-              // We need to query Google Drive to find the file or rely on verification step
-              console.log('Upload completed but no file ID in response, will verify in next step');
-              resolve('uploaded'); // Placeholder - verification step will get the actual ID
+              const responseData = JSON.parse(xhr.response);
+              resolve(responseData);
             } catch (parseError) {
-              console.error('Error parsing Google Drive response:', parseError);
-              console.log('Response text:', xhr.response);
-              // Upload might have succeeded even if response parsing failed
-              // Let the verification step handle it
-              resolve('uploaded');
+              console.error('Error parsing response:', parseError);
+              reject(new Error('Invalid response from server'));
             }
           } else {
-            reject(new Error(`Upload failed (Status ${xhr.status})`));
+            let errorMsg = `Upload failed (Status ${xhr.status})`;
+            try {
+              const errorData = JSON.parse(xhr.response);
+              errorMsg = errorData.error || errorMsg;
+            } catch {
+              // Use default error message
+            }
+            reject(new Error(errorMsg));
           }
         });
         
@@ -135,37 +128,26 @@ export default function HomePage() {
           reject(new Error('Upload timed out - please try again'));
         });
         
-        xhr.open('PUT', uploadUrl);
+        xhr.open('POST', '/api/upload/proxy');
         xhr.timeout = UPLOAD_TIMEOUT_MS;
-        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-        xhr.send(file); // Send the raw file, not FormData
+        
+        // Send file through our backend proxy
+        const formData = new FormData();
+        formData.append('uploadUrl', uploadUrl);
+        formData.append('file', file);
+        xhr.send(formData);
       });
       
-      const fileId = await uploadWithProgress;
+      const result = await uploadWithProgress;
       
-      // Step 3: Verify upload completion with our backend
-      // This is essential now since we might not get file ID from Google Drive response
-      const verifyRes = await fetch('/api/upload/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          fileId: fileId !== 'uploaded' ? fileId : undefined,
-          fileName: file.name,
-          client: client,
-          campaign: campaign,
-          publication: pub
-        })
-      });
-
-      if (verifyRes.ok) {
+      if (result.ok && result.file) {
         setUploadProgress(100);
         setStatus('success');
         // Reset form
         setFile(null);
         setUploadStartTime(null);
       } else {
-        const error = await verifyRes.json();
-        setStatus(`error:${error.error || 'Upload succeeded but verification failed'}`);
+        setStatus('error:Upload succeeded but response format unexpected');
         setUploadProgress(0);
         setUploadStartTime(null);
       }

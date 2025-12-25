@@ -45,7 +45,27 @@ Creates a Google Drive resumable upload session.
 }
 ```
 
-### `/api/upload/complete` (POST)
+### `/api/upload/proxy` (POST)
+Proxies the file upload to Google Drive (avoids CORS issues).
+
+**Request:** FormData with:
+- `uploadUrl`: The resumable upload URL from initiate step
+- `file`: The file to upload
+
+**Response:**
+```json
+{
+  "ok": true,
+  "file": {
+    "id": "string",
+    "name": "string",
+    "size": "string",
+    "mimeType": "string"
+  }
+}
+```
+
+### `/api/upload/complete` (POST) - OPTIONAL
 Verifies the upload completed successfully.
 
 **Request:**
@@ -177,25 +197,25 @@ Upload failed (Status 500)
 1. Open browser DevTools → Network tab
 2. Start file upload
 3. Look for requests:
-   - ✅ `POST /api/upload/initiate` (small, <1KB)
-   - ✅ `PUT https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable...` (large, full file size)
-   - ✅ `POST /api/upload/complete` (small, <1KB)
-   - ❌ No `POST /api/upload` with large payload
+   - ✅ `POST /api/upload/initiate` (small, <1KB - metadata only)
+   - ✅ `POST /api/upload/proxy` (file size + small overhead - contains file data)
+   - ❌ No direct `PUT` to `googleapis.com` from browser (CORS prevented)
+   - ✅ Backend uploads to Google Drive on your behalf
 
 ### File Flow Confirmation
 ```
-Browser                    Vercel API              Google Drive
+Browser                    Vercel API (Proxy)      Google Drive
    |                          |                         |
    |-- metadata (1KB) ------->|                         |
    |                          |-- create session ------>|
    |<------ upload URL --------|<----- session URL -----|
    |                          |                         |
-   |------------- file data (direct) ----------------->|
-   |                          |                         |
-   |-- file ID (1KB) -------->|                         |
-   |                          |-- verify ------------>|
-   |<------ success -----------|<----- metadata --------|
+   |-- file data (FormData) ->|                         |
+   |                          |-- upload file --------->|
+   |<------ file metadata -----|<----- metadata ---------|
 ```
+
+**Key Point**: File goes through Vercel backend proxy to avoid CORS, but backend immediately streams it to Google Drive without storing it.
 
 ## Future Enhancements
 
