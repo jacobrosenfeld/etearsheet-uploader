@@ -478,6 +478,7 @@ Release a new version when:
 2. Document any discovered issues in GitHub issues
 3. Plan hotfix if critical bug found (patch version)
 4. Update documentation if needed
+5. To test notification popup again: Clear admin session data from browser localStorage (look for `adminSessionId` key)
 
 ### Version History Reference
 

@@ -82,10 +82,11 @@ interface NotificationPanelProps {
   adminId: string;
 }
 
+const MAX_DISPLAYED_NOTIFICATIONS = 3; // Maximum notifications shown in panel
+
 export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPanelProps) {
   const [notifications, setNotifications] = useState<AdminNotification[]>([]);
   const [loading, setLoading] = useState(true);
-  const maxDisplayed = 3; // Show max 3 notifications in panel
 
   useEffect(() => {
     if (isOpen) {
@@ -129,8 +130,8 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
 
   if (!isOpen) return null;
 
-  const displayedNotifications = notifications.slice(0, maxDisplayed);
-  const hasMore = notifications.length > maxDisplayed;
+  const displayedNotifications = notifications.slice(0, MAX_DISPLAYED_NOTIFICATIONS);
+  const hasMore = notifications.length > MAX_DISPLAYED_NOTIFICATIONS;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4">
@@ -196,7 +197,7 @@ export function NotificationPanel({ isOpen, onClose, adminId }: NotificationPane
               {hasMore && (
                 <div className="text-center pt-2">
                   <p className="text-sm text-gray-600">
-                    Showing {maxDisplayed} of {notifications.length} notifications
+                    Showing {MAX_DISPLAYED_NOTIFICATIONS} of {notifications.length} notifications
                   </p>
                 </div>
               )}
