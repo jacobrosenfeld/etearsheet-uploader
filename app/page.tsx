@@ -239,10 +239,9 @@ export default function HomePage() {
               className={`
                 relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
                 transition-all duration-200 ease-in-out
-                ${isDragging 
-                  ? 'border-blue-500 bg-blue-50 scale-[1.02]' 
-                  : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
-                }
+                ${isDragging
+                  ? 'border-blue-500 bg-blue-50 scale-[1.02]'
+                  : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'}
               `}
             >
               <input
@@ -309,7 +308,7 @@ export default function HomePage() {
                 className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center shadow-lg"
                 style={{ width: `${uploadProgress}%` }}
               >
-                <div className="absolute inset-0 bg-white/20 motion-safe:animate-pulse"></div>
+                <div className="absolute inset-0 bg-white/10 motion-safe:animate-pulse"></div>
                 <span className="relative z-10 text-sm font-bold text-white drop-shadow-md">
                   {uploadProgress}%
                 </span>
