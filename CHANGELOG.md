@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.1] - 2025-12-26
+
+### Changed
+- **Page Width**: Increased main container from `max-w-4xl` to `max-w-6xl` for more horizontal content space
+- **Header Design**: Updated header to match Link-Scripts style with logo/text left, navigation buttons right, and bottom border separator
+
 ## [1.3.0] - 2025-12-26
 
 ### Added

@@ -210,6 +210,13 @@ This is a Next.js application that provides a secure portal for uploading market
 
 ## Development Guidelines
 
+### Version Management
+- **ALWAYS increment the version number for changes that necessitate a PR**
+  - Use semantic versioning: patch (x.x.1) for UI updates/fixes, minor (x.1.0) for new features, major (1.x.0) for breaking changes
+  - Update `package.json` version field
+  - Add corresponding entry to `CHANGELOG.md` with 2-line summary
+  - Admin notifications are automatically generated from CHANGELOG.md
+
 ### Code Style
 - Use TypeScript strict mode - all types must be explicit
 - Follow Next.js App Router conventions
