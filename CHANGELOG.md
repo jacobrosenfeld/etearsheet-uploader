@@ -2,6 +2,26 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.2] - 2025-12-26
+
+### Added
+- **Confirmation Dialog for Deletions**: Added confirmation dialog when deleting items in admin panel
+  - Applies to clients, campaigns, and publications
+  - Shows item name in confirmation message
+  - Clear warning: "This action cannot be undone"
+  - Keyboard support (Escape to cancel, Enter to confirm)
+  - Consistent styling with existing UI components
+  - Reusable ConfirmDialog component for future use
+
+### Changed
+- **Delete Behavior**: Items no longer deleted immediately on click
+- **User Experience**: Prevents accidental deletions with confirmation step
+
+### Admin Notes
+- When clicking "Remove" on any item, a confirmation dialog will appear
+- Press Escape to cancel or Enter to confirm deletion
+- Dialog is accessible and follows existing modal patterns
+
 ## [1.2.1] - 2025-12-25
 
 ### Added
