@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.3.0] - 2025-12-26
+
+### Added
+- **Drag-and-Drop Upload**: Users can now drag and drop files directly onto the upload area
+  - Visual feedback during drag operation with border highlighting
+  - Seamless integration with existing click-to-select functionality
+  - Works alongside the traditional file input method
+- **Enhanced Progress Bar Design**: Improved upload progress visualization
+  - Elegant gradient design with smooth animations
+  - Prominent percentage display with better visibility
+  - Enhanced time remaining estimate with improved formatting
+  - Animated progress bar with smooth transitions
+
+### Changed
+- **File Input Experience**: Upload area now supports both drag-and-drop and click-to-select
+- **Progress Feedback**: More polished and professional upload progress display
+
+### Admin Notes
+- No configuration changes required
+- Both upload methods work identically - drag-and-drop or click to select
+- Progress bar now provides clearer visual feedback during uploads
+
 ## [1.2.2] - 2025-12-26
 
 ### Added

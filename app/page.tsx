@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 type PortalConfig = {
   clients: Array<{ name: string; hidden?: boolean }>;
@@ -22,6 +22,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Configuration constants
   const UPLOAD_TIMEOUT_MS = 300000; // 5 minutes (matches server-side timeout)
@@ -40,14 +42,14 @@ export default function HomePage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Calculate estimated time remaining
-  const getEstimatedTimeRemaining = () => {
+  // Calculate estimated time remaining (memoized to avoid redundant calculations)
+  const estimatedTimeRemaining = useMemo(() => {
     if (!uploadStartTime || uploadProgress === 0) return null;
     const elapsed = Date.now() - uploadStartTime;
     const rate = uploadProgress / elapsed; // progress per ms
     const remaining = (100 - uploadProgress) / rate;
     return Math.round(remaining / 1000); // convert to seconds
-  };
+  }, [uploadStartTime, uploadProgress]);
 
   // Format file size for display
   const formatFileSize = (bytes: number) => {
@@ -55,6 +57,42 @@ export default function HomePage() {
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
     if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      setFile(files[0]);
+    }
+  };
+
+  const handleFileInputClick = () => {
+    fileInputRef.current?.click();
   };
 
   async function doUpload(e: React.FormEvent) {
@@ -190,17 +228,69 @@ export default function HomePage() {
           </div>
           <div>
             <label className="label">File</label>
-            <input className="input" type="file" onChange={(e)=>setFile(e.target.files?.[0] || null)} />
-            {file && (
-              <div className="mt-1 space-y-1">
-                <div className="text-xs text-gray-600">
-                  Selected: {file.name} ({formatFileSize(file.size)})
-                </div>
-                {file.size > LARGE_FILE_WARNING_THRESHOLD && (
-                  <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
-                    ⚠️ Large file detected ({formatFileSize(file.size)}). Upload may take several minutes.
-                  </div>
+            
+            {/* Drag and Drop Zone */}
+            <div
+              onDragEnter={handleDragEnter}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={handleFileInputClick}
+              className={`
+                relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
+                transition-all duration-200 ease-in-out
+                ${isDragging
+                  ? 'border-blue-500 bg-blue-50 scale-[1.02]'
+                  : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'}
+              `}
+            >
+              <input
+                ref={fileInputRef}
+                className="hidden"
+                type="file"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+              
+              <div className="space-y-2">
+                {file ? (
+                  <>
+                    <div className="text-4xl" role="img" aria-label="Document file selected">📄</div>
+                    <div className="text-sm font-semibold text-gray-700">
+                      {file.name}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {formatFileSize(file.size)}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFile(null);
+                      }}
+                      className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+                    >
+                      Remove file
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-5xl mb-2" role="img" aria-label={isDragging ? "Drop file here" : "Drag and drop file"}>
+                      {isDragging ? '📥' : '📎'}
+                    </div>
+                    <div className="text-base font-semibold text-gray-700">
+                      {isDragging ? 'Drop file here' : 'Drag & drop file here'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      or click to browse
+                    </div>
+                  </>
                 )}
+              </div>
+            </div>
+            
+            {file && file.size > LARGE_FILE_WARNING_THRESHOLD && (
+              <div className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+                ⚠️ Large file detected ({formatFileSize(file.size)}). Upload may take several minutes.
               </div>
             )}
           </div>
@@ -211,24 +301,43 @@ export default function HomePage() {
         
         {/* Upload Progress Bar */}
         {status === 'Uploading...' && (
-          <div className="space-y-2">
-            <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+          <div className="space-y-3 animate-fade-in">
+            {/* Progress Bar */}
+            <div className="relative w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-8 overflow-hidden shadow-inner">
               <div 
-                className="bg-blue-600 h-4 rounded-full transition-all duration-300 flex items-center justify-center"
+                className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center shadow-lg"
                 style={{ width: `${uploadProgress}%` }}
               >
-                {uploadProgress > 10 && (
-                  <span className="text-xs font-semibold text-white">{uploadProgress}%</span>
-                )}
+                <div className="absolute inset-0 bg-white/10 motion-safe:animate-pulse"></div>
+                <span className="relative z-10 text-sm font-bold text-white drop-shadow-md">
+                  {uploadProgress}%
+                </span>
               </div>
             </div>
-            <div className="text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+
+            {/* Upload Info */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <span>⏳ Uploading {file?.name}...</span>
-                {uploadProgress > 0 && getEstimatedTimeRemaining() && (
-                  <span className="text-xs text-blue-500">
-                    ~{getEstimatedTimeRemaining()}s remaining
-                  </span>
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl motion-safe:animate-pulse" role="img" aria-label="Upload in progress">⏳</div>
+                  <div>
+                    <div className="text-sm font-semibold text-blue-900">
+                      Uploading {file?.name}
+                    </div>
+                    {file && (
+                      <div className="text-xs text-blue-600">
+                        {formatFileSize(file.size)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {uploadProgress > 0 && estimatedTimeRemaining && estimatedTimeRemaining > 0 && (
+                  <div className="text-right">
+                    <div className="text-xs text-blue-500 font-medium">Time remaining</div>
+                    <div className="text-lg font-bold text-blue-700">
+                      {estimatedTimeRemaining}s
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
