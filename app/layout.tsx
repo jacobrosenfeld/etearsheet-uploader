@@ -16,18 +16,20 @@ return (
 		<meta name="description" content="JJA - eTearsheet upload portal for publications to submit ad tear sheets." />
 	</head>
 <body className="min-h-screen">
-<div className="max-w-4xl mx-auto p-6 space-y-6">
-<header className="flex items-center justify-between">
-<div className="flex items-center gap-3">
+<div className="max-w-6xl mx-auto p-6 space-y-6">
+<header className="flex items-center justify-between mb-4 pb-4 border-b border-gray-300">
+<a className="flex items-center space-x-3 hover:opacity-80 transition-opacity" href="/">
 	<img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
-	<h1 className="text-2xl font-bold">Joseph Jacobs Advertising</h1>
-	<h2 className="text-lg font-semibold">eTearsheet Upload Portal</h2>
-</div>
+	<div>
+		<div className="text-lg font-bold text-gray-900">Joseph Jacobs Advertising</div>
+		<div className="text-sm text-gray-600">eTearsheet Upload Portal</div>
+	</div>
+</a>
 {userRole && (
-<nav className="flex gap-3">
-	<a className="btn" href="/">Upload</a>
-	{userRole === 'admin' && <a className="btn" href="/admin">Admin</a>}
-	<form action="/api/logout" method="post"><button className="btn" type="submit">Logout</button></form>
+<nav className="flex items-center gap-3">
+	<a className="btn-header" href="/">Upload</a>
+	{userRole === 'admin' && <a className="btn-header" href="/admin">Admin Panel</a>}
+	<form action="/api/logout" method="post"><button className="btn-header" type="submit">Logout</button></form>
 </nav>
 )}
 </header>

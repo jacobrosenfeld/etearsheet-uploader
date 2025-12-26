@@ -9,6 +9,7 @@ body { @apply bg-neutral-100 text-neutral-900; }
 .btn-primary { @apply btn bg-black text-white border-black; }
 .btn-secondary { @apply btn bg-gray-200 text-gray-700 border-gray-200; }
 .btn-ghost { @apply btn bg-transparent border-transparent; }
+.btn-header { @apply inline-flex items-center gap-2 bg-blue-600 hover:brightness-110 text-white px-4 py-2 rounded-xl font-semibold transition-all; }
 .input { @apply w-full border rounded-xl px-3 py-2; }
 .label { @apply text-sm font-semibold text-neutral-600; }
 
