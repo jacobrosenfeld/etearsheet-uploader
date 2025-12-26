@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { VersionNotificationPopup, VersionNotificationPanel, VersionNotification } from '@/app/components/VersionNotifications';
+import { ConfirmDialog } from '@/app/components/ConfirmDialog';
 import { PortalConfig } from '@/lib/types';
 import packageJson from '../../package.json';
 
@@ -26,6 +27,14 @@ export default function AdminPage() {
   const [recentVersions, setRecentVersions] = useState<VersionNotification[]>([]);
   const [totalVersions, setTotalVersions] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
+
+  // State for confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    itemType: 'clients' | 'campaigns' | 'publications';
+    itemIndex: number;
+    itemName: string;
+  } | null>(null);
 
   useEffect(() => {
     async function loadConfigAndState() {
@@ -151,8 +160,25 @@ export default function AdminPage() {
   }
 
   async function removeItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
-    const updatedCfg = { ...cfg, [type]: cfg[type].filter((_, i) => i !== index) };
+    const itemName = cfg[type][index].name;
+    // Show confirmation dialog instead of immediately removing
+    setConfirmDialog({
+      isOpen: true,
+      itemType: type,
+      itemIndex: index,
+      itemName: itemName
+    });
+  }
+
+  async function confirmRemoveItem() {
+    if (!confirmDialog) return;
+    
+    const { itemType, itemIndex } = confirmDialog;
+    const updatedCfg = { ...cfg, [itemType]: cfg[itemType].filter((_, i) => i !== itemIndex) };
     setCfg(updatedCfg);
+    
+    // Close dialog
+    setConfirmDialog(null);
     
     // Save immediately to the backend
     const res = await fetch('/api/config', {
@@ -166,6 +192,10 @@ export default function AdminPage() {
       setCfg(cfg);
       alert('Failed to remove item');
     }
+  }
+
+  function cancelRemoveItem() {
+    setConfirmDialog(null);
   }
 
   function startEditingItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
@@ -262,6 +292,20 @@ export default function AdminPage() {
         recentVersions={recentVersions}
         totalVersions={totalVersions}
       />
+
+      {/* Confirmation Dialog for Deletions */}
+      {confirmDialog && (
+        <ConfirmDialog
+          isOpen={confirmDialog.isOpen}
+          title="Confirm Deletion"
+          message={`Are you sure you want to delete "${confirmDialog.itemName}"? This action cannot be undone.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
+          onConfirm={confirmRemoveItem}
+          onCancel={cancelRemoveItem}
+          variant="danger"
+        />
+      )}
 
       <div className="card">
         <div className="flex justify-between items-center mb-4">
