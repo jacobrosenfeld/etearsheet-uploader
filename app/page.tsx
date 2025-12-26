@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 
 type PortalConfig = {
   clients: Array<{ name: string; hidden?: boolean }>;
@@ -23,6 +23,7 @@ export default function HomePage() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Configuration constants
   const UPLOAD_TIMEOUT_MS = 300000; // 5 minutes (matches server-side timeout)
@@ -41,14 +42,14 @@ export default function HomePage() {
       .catch(() => setLoading(false));
   }, []);
 
-  // Calculate estimated time remaining
-  const getEstimatedTimeRemaining = () => {
+  // Calculate estimated time remaining (memoized to avoid redundant calculations)
+  const estimatedTimeRemaining = useMemo(() => {
     if (!uploadStartTime || uploadProgress === 0) return null;
     const elapsed = Date.now() - uploadStartTime;
     const rate = uploadProgress / elapsed; // progress per ms
     const remaining = (100 - uploadProgress) / rate;
     return Math.round(remaining / 1000); // convert to seconds
-  };
+  }, [uploadStartTime, uploadProgress]);
 
   // Format file size for display
   const formatFileSize = (bytes: number) => {
@@ -91,7 +92,7 @@ export default function HomePage() {
   };
 
   const handleFileInputClick = () => {
-    document.getElementById('file-input')?.click();
+    fileInputRef.current?.click();
   };
 
   async function doUpload(e: React.FormEvent) {
@@ -245,7 +246,7 @@ export default function HomePage() {
               `}
             >
               <input
-                id="file-input"
+                ref={fileInputRef}
                 className="hidden"
                 type="file"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
@@ -300,52 +301,49 @@ export default function HomePage() {
         </form>
         
         {/* Upload Progress Bar */}
-        {status === 'Uploading...' && (() => {
-          const timeRemaining = getEstimatedTimeRemaining();
-          return (
-            <div className="space-y-3 animate-fade-in">
-              {/* Progress Bar */}
-              <div className="relative w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-8 overflow-hidden shadow-inner">
-                <div 
-                  className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center shadow-lg"
-                  style={{ width: `${uploadProgress}%` }}
-                >
-                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                  <span className="relative z-10 text-sm font-bold text-white drop-shadow-md">
-                    {uploadProgress}%
-                  </span>
-                </div>
-              </div>
-
-              {/* Upload Info */}
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-2xl animate-pulse">⏳</div>
-                    <div>
-                      <div className="text-sm font-semibold text-blue-900">
-                        Uploading {file?.name}
-                      </div>
-                      {file && (
-                        <div className="text-xs text-blue-600">
-                          {formatFileSize(file.size)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  {uploadProgress > 0 && timeRemaining && timeRemaining > 0 && (
-                    <div className="text-right">
-                      <div className="text-xs text-blue-500 font-medium">Time remaining</div>
-                      <div className="text-lg font-bold text-blue-700">
-                        {timeRemaining}s
-                      </div>
-                    </div>
-                  )}
-                </div>
+        {status === 'Uploading...' && (
+          <div className="space-y-3 animate-fade-in">
+            {/* Progress Bar */}
+            <div className="relative w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-8 overflow-hidden shadow-inner">
+              <div 
+                className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center shadow-lg"
+                style={{ width: `${uploadProgress}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 motion-safe:animate-pulse"></div>
+                <span className="relative z-10 text-sm font-bold text-white drop-shadow-md">
+                  {uploadProgress}%
+                </span>
               </div>
             </div>
-          );
-        })()}
+
+            {/* Upload Info */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl motion-safe:animate-pulse">⏳</div>
+                  <div>
+                    <div className="text-sm font-semibold text-blue-900">
+                      Uploading {file?.name}
+                    </div>
+                    {file && (
+                      <div className="text-xs text-blue-600">
+                        {formatFileSize(file.size)}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {uploadProgress > 0 && estimatedTimeRemaining && estimatedTimeRemaining > 0 && (
+                  <div className="text-right">
+                    <div className="text-xs text-blue-500 font-medium">Time remaining</div>
+                    <div className="text-lg font-bold text-blue-700">
+                      {estimatedTimeRemaining}s
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         {status === 'success' && (
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-lg p-4 animate-pulse">
             <div className="flex items-center gap-3">
