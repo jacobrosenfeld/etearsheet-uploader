@@ -255,7 +255,7 @@ export default function HomePage() {
               <div className="space-y-2">
                 {file ? (
                   <>
-                    <div className="text-4xl">📄</div>
+                    <div className="text-4xl" role="img" aria-label="Document file selected">📄</div>
                     <div className="text-sm font-semibold text-gray-700">
                       {file.name}
                     </div>
@@ -275,7 +275,7 @@ export default function HomePage() {
                   </>
                 ) : (
                   <>
-                    <div className="text-5xl mb-2">
+                    <div className="text-5xl mb-2" role="img" aria-label={isDragging ? "Drop file here" : "Drag and drop file"}>
                       {isDragging ? '📥' : '📎'}
                     </div>
                     <div className="text-base font-semibold text-gray-700">
@@ -320,7 +320,7 @@ export default function HomePage() {
             <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl motion-safe:animate-pulse">⏳</div>
+                  <div className="text-2xl motion-safe:animate-pulse" role="img" aria-label="Upload in progress">⏳</div>
                   <div>
                     <div className="text-sm font-semibold text-blue-900">
                       Uploading {file?.name}
