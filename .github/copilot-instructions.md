@@ -393,9 +393,9 @@ Release a new version when:
 
 2. **Update Version in Code**
    - `package.json`: Update `version` field
-   - `app/layout.tsx`: Update version in footer display (e.g., `v1.2.0`)
+   - Version automatically shown in footer (reads from package.json)
 
-3. **Update CHANGELOG.md**
+3. **Update CHANGELOG.md** ⭐ **THIS IS THE SOURCE OF TRUTH**
    - Add new section at top with version and date
    - Format: `## [X.Y.Z] - YYYY-MM-DD`
    - Organize changes by category:
@@ -407,69 +407,69 @@ Release a new version when:
      - **Security**: Security fixes
    - Include admin notes if configuration or behavior changes
    - Be specific and user-focused in descriptions
+   - **Admin notifications are automatically generated from CHANGELOG.md** - no manual notification creation needed!
 
-4. **Create Admin Notification**
-   - Edit `lib/configStore.ts` → `getInitialNotifications()` function
-   - Add new notification at the TOP of the array (most recent first)
-   - Use unique ID format: `v{version}-{short-description}`
-   - Set appropriate type: `feature`, `update`, or `announcement`
-   - Keep message concise but informative (2-3 sentences)
-   - Set `dismissedBy: []` for new notifications
-   - Use date format: `new Date('YYYY-MM-DD').toISOString()`
-
-5. **Test Notification System**
-   - Clear `adminSessionId` from localStorage to test popup
-   - Verify popup appears once for new version
-   - Check notification panel shows limited view (max 3)
+4. **Test Notification System**
+   - Build and deploy the new version
+   - Admin will automatically see popup on first visit
+   - Popup shows all unseen versions (versions > lastDismissedVersion and ≤ currentVersion)
+   - Verify popup displays changes from CHANGELOG.md
+   - Check notification panel shows recent 3 versions
    - Confirm "View full changelog" link works
-   - Verify dismiss functionality works
+   - Verify dismiss functionality persists to Vercel Blob
 
-### Admin Notification Guidelines
+### How Changelog-Driven Notifications Work
 
-**Notification Panel Behavior:**
-- Shows maximum 3 most recent notifications
-- Displays count if more notifications exist ("Showing 3 of 5 notifications")
-- "View full changelog" link directs to GitHub CHANGELOG.md
-- Dismissed notifications show "Read" badge but remain visible
-- Panel accessible from admin page notification icon
+**Automatic Process (v1.2.1+):**
+1. **Source of Truth**: CHANGELOG.md is the authoritative source for all version information
+2. **Parser**: System automatically parses CHANGELOG.md on admin page load
+3. **Version Comparison**: Uses semantic versioning (1.2.10 > 1.2.2) to determine unseen versions
+4. **State Persistence**: Admin dismissal state stored in Vercel Blob (`admin-state/admin-state.json`)
+5. **Popup Logic**: Shows if any versions > lastDismissedVersion exist
+6. **Dismissal**: Clicking "Got it!" updates lastDismissedVersion to current version in blob storage
 
-**One-Time Popup Behavior:**
-- Appears automatically for admins on first visit after upgrade
-- Shows ONLY the newest unread notification
-- Dismissed via "Got it!" button
-- Never shows again for that admin (tracked by `adminSessionId` in localStorage)
-- Remains in notification panel history after dismissal
+**Key Files:**
+- `lib/semver.ts` - Semantic version comparison utilities
+- `lib/changelog.ts` - CHANGELOG.md parser
+- `lib/adminState.ts` - Vercel Blob storage for admin state
+- `app/api/admin-state/route.ts` - API for reading/writing admin state
+- `app/components/VersionNotifications.tsx` - Popup and panel components
 
-**Notification Message Best Practices:**
-- Start with emoji relevant to type (🚀 feature, 🔔 update, 📢 announcement)
-- Clear, concise title (5-7 words max)
-- 2-3 sentence message explaining the change
-- Focus on user benefit, not technical details
-- Example: "You can now upload files of any size! The new chunked upload system supports files up to 5TB with real-time progress tracking."
-
-### Example Notification
-
-```typescript
+**Blob Storage Structure:**
+```json
 {
-  id: 'v1.2.0-large-file-upload',
-  version: '1.2.0',
-  title: '🚀 Large File Upload Support',
-  message: 'You can now upload files of any size! The new chunked upload system supports files up to 5TB with real-time progress tracking. Large files (>100MB) will show a warning and upload time estimate.',
-  type: 'feature' as const,
-  createdAt: new Date('2025-12-25').toISOString(),
-  dismissedBy: []
+  "lastDismissedVersion": "1.2.0",
+  "updatedAt": "2025-12-25T12:00:00Z"
 }
 ```
 
+### Admin Notification Behavior
+
+**Notification Panel:**
+- Shows maximum 3 most recent versions from CHANGELOG.md
+- Displays total version count if more than 3 exist
+- "View full changelog" link directs to GitHub CHANGELOG.md
+- Accessible from admin page notification icon
+- Red dot indicator shows when unseen versions exist
+
+**One-Time Popup:**
+- Appears automatically for admin on first visit after upgrade
+- Shows ALL unseen versions (not just the latest)
+- Each version displays its sections from CHANGELOG.md (Added, Changed, Fixed, etc.)
+- Dismissed via "Got it!" button
+- Dismissal persists across deploys via Vercel Blob
+- Never shows again until a newer version is deployed
+
 ### Deploying a Release
 
-1. Commit all version/changelog/notification changes
+1. Commit all version/changelog changes
 2. Push to main branch or create PR
 3. Vercel automatically deploys on merge
 4. Test in production:
    - Verify version in footer
-   - Test notification popup (clear localStorage first)
-   - Verify new feature works as expected
+   - Test notification popup appears automatically
+   - Verify popup shows changes from CHANGELOG.md
+   - Test dismissal persists across page reloads
    - Check admin panel notification list
 
 ### Post-Release
@@ -478,12 +478,12 @@ Release a new version when:
 2. Document any discovered issues in GitHub issues
 3. Plan hotfix if critical bug found (patch version)
 4. Update documentation if needed
-5. To test notification popup again: Clear admin session data from browser localStorage (look for `adminSessionId` key)
 
 ### Version History Reference
 
 Track all versions in CHANGELOG.md, even minor patches. This serves as:
-- Historical record of changes
-- Source for "View full changelog" link
-- Reference for future development
-- User-facing documentation of improvements
+- **Historical record of changes** - Complete version history
+- **Source for notifications** - Admin notifications automatically generated from changelog
+- **Source for "View full changelog" link** - Users can review full history
+- **Reference for future development** - Understanding evolution of features
+- **User-facing documentation** - Clear communication of improvements

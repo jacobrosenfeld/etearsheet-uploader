@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.1] - 2025-12-25
+
+### Added
+- **Changelog-Driven Notifications**: Admin notifications now automatically driven by CHANGELOG.md
+  - Version-aware notification system reads from authoritative changelog
+  - Semantic version comparison ensures correct version ordering
+  - Admin state persisted in Vercel Blob storage (separate from config)
+  - Popup shows only when new versions exist (> lastDismissedVersion)
+  - Dismissal persists currentVersion to blob storage
+- **Semver Utilities**: Proper semantic versioning comparison (1.2.10 > 1.2.2)
+- **Changelog Parser**: Automatic extraction of version entries from CHANGELOG.md
+- **Admin State API**: New `/api/admin-state` endpoint for state management
+
+### Changed
+- **Notification System**: Migrated from hardcoded notifications to changelog-driven approach
+- **Persistence**: Admin dismissal state now in dedicated blob (admin-state/admin-state.json)
+- **Version Source**: Application version from package.json shown in footer
+
+### Fixed
+- **Version Comparison**: No longer uses string comparison (prevents 1.2.2 > 1.2.10 bug)
+
+### Admin Notes
+- This is the new standard for release announcements
+- Add new versions to CHANGELOG.md, system automatically shows popup
+- State persists across deploys via Vercel Blob
+- No manual notification creation needed anymore
+
 ## [1.2.0] - 2025-12-25
 
 ### Added
