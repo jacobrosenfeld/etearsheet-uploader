@@ -34,15 +34,12 @@ export function ConfirmDialog({
       if (e.key === 'Escape') {
         e.preventDefault();
         onCancel();
-      } else if (e.key === 'Enter') {
-        e.preventDefault();
-        onConfirm();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onConfirm, onCancel]);
+  }, [isOpen, onCancel]);
 
   if (!isOpen) return null;
 

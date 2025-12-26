@@ -160,6 +160,12 @@ export default function AdminPage() {
   }
 
   async function removeItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
+    // Defensive check: ensure item exists
+    if (!cfg[type] || !cfg[type][index] || !cfg[type][index].name) {
+      console.error('Cannot remove item: item not found at index', index);
+      return;
+    }
+    
     const itemName = cfg[type][index].name;
     // Show confirmation dialog instead of immediately removing
     setConfirmDialog({
