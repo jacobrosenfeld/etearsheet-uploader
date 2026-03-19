@@ -1,6 +1,13 @@
 import { google } from 'googleapis';
 import { readConfig, writeConfig } from './configStore';
 import { Readable } from 'stream';
+import path from 'path';
+
+function buildFilename(publication: string, date: string, originalName: string): string {
+  const ext = path.extname(originalName);
+  const base = path.basename(originalName, ext);
+  return `${publication}_${date}_${base}${ext}`;
+}
 
 // Extract folder ID from Google Drive URL
 function extractFolderIdFromUrl(url: string): string | null {
@@ -243,11 +250,8 @@ export async function uploadIntoPath(opts: { file: File; client: string; campaig
   });
 
   // Create filename with publication_date_originalname format
-  const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-  const originalName = opts.file.name;
-  const fileExtension = originalName.substring(originalName.lastIndexOf('.'));
-  const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
-  const filename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
+  const today = new Date().toISOString().substring(0, 10);
+  const filename = buildFilename(opts.publication, today, opts.file.name);
 
   const fileSize = opts.file.size;
   console.log(`[uploadIntoPath] Uploading file: ${filename}, size: ${fileSize} bytes`);
@@ -353,6 +357,7 @@ export async function initiateResumableUpload(opts: {
   fileName: string;
   fileSize: number;
   mimeType: string;
+  date?: string; // YYYY-MM-DD, defaults to today
 }): Promise<string> {
   const drive = getDriveClient();
   
@@ -364,11 +369,8 @@ export async function initiateResumableUpload(opts: {
   });
 
   // Create filename with publication_date_originalname format
-  const today = new Date().toISOString().split('T')[0];
-  const originalName = opts.fileName;
-  const fileExtension = originalName.substring(originalName.lastIndexOf('.'));
-  const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
-  const filename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
+  const today = opts.date ?? new Date().toISOString().substring(0, 10);
+  const filename = buildFilename(opts.publication, today, opts.fileName);
 
   console.log(`[initiateResumableUpload] Initiating upload for ${filename}, size: ${opts.fileSize}`);
 
@@ -442,6 +444,7 @@ export async function findRecentUpload(opts: {
   client: string;
   campaign: string;
   publication: string;
+  date?: string; // YYYY-MM-DD, defaults to today
 }) {
   const drive = getDriveClient();
   
@@ -453,11 +456,8 @@ export async function findRecentUpload(opts: {
   });
 
   // Create the expected filename pattern
-  const today = new Date().toISOString().split('T')[0];
-  const originalName = opts.fileName;
-  const fileExtension = originalName.substring(originalName.lastIndexOf('.'));
-  const baseFilename = originalName.substring(0, originalName.lastIndexOf('.'));
-  const expectedFilename = `${opts.publication}_${today}_${baseFilename}${fileExtension}`;
+  const today = opts.date ?? new Date().toISOString().substring(0, 10);
+  const expectedFilename = buildFilename(opts.publication, today, opts.fileName);
 
   console.log(`[findRecentUpload] Searching for file: ${expectedFilename} in folder: ${parentId}`);
 

@@ -123,11 +123,6 @@ export async function readConfig(): Promise<PortalConfig> {
   }
 }
 
-// Legacy function - notifications now driven by CHANGELOG.md
-function getInitialNotifications() {
-  return [];
-}
-
 export async function writeConfig(nextCfg: PortalConfig): Promise<void> {
   try {
     // Clean up old configs before writing new one
@@ -144,14 +139,3 @@ export async function writeConfig(nextCfg: PortalConfig): Promise<void> {
   }
 }
 
-/** Optional helper if you ever want to reset */
-export async function resetConfig(): Promise<void> {
-  try { 
-    const { blobs } = await list({ prefix: 'config/' });
-    for (const blob of blobs) {
-      await del(blob.url);
-    }
-  } catch (e) {
-    console.warn('Error resetting config:', e);
-  }
-}

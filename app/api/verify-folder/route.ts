@@ -87,10 +87,12 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error: any) {
+    const code = error.code || error.status;
+    const httpStatus = code === 403 ? 403 : code === 404 ? 404 : 500;
     return NextResponse.json({
       success: false,
       error: error.message,
-      code: error.code || error.status,
+      code,
       folderId,
       message: '❌ Could not access folder',
       recommendations: [
@@ -99,6 +101,6 @@ export async function GET(req: NextRequest) {
         'Verify domain-wide delegation is configured correctly',
         'Check that the impersonated user has access to this folder'
       ]
-    }, { status: 200 }); // Return 200 so we can show the error nicely in UI
+    }, { status: httpStatus });
   }
 }

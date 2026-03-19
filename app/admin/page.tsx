@@ -2,13 +2,16 @@
 import { useState, useEffect } from 'react';
 import { VersionNotificationPopup, VersionNotificationPanel, VersionNotification } from '@/app/components/VersionNotifications';
 import { ConfirmDialog } from '@/app/components/ConfirmDialog';
+import { ItemList } from '@/app/components/ItemList';
 import { PortalConfig } from '@/lib/types';
 import packageJson from '../../package.json';
 
+type ConfigItemType = 'clients' | 'campaigns' | 'publications';
+
 export default function AdminPage() {
-  const [cfg, setCfg] = useState<PortalConfig>({ 
-    clients: [], 
-    campaigns: [], 
+  const [cfg, setCfg] = useState<PortalConfig>({
+    clients: [],
+    campaigns: [],
     publications: [],
     driveSettings: {},
     adminNotifications: []
@@ -16,29 +19,26 @@ export default function AdminPage() {
   const [status, setStatus] = useState('');
   const [verifyStatus, setVerifyStatus] = useState<any>(null);
   const [verifying, setVerifying] = useState(false);
-  const [addingItem, setAddingItem] = useState<'clients' | 'campaigns' | 'publications' | null>(null);
+  const [addingItem, setAddingItem] = useState<ConfigItemType | null>(null);
   const [newItemValue, setNewItemValue] = useState('');
-  const [editingItem, setEditingItem] = useState<{ type: 'clients' | 'campaigns' | 'publications'; index: number; } | null>(null);
+  const [editingItem, setEditingItem] = useState<{ type: ConfigItemType; index: number } | null>(null);
   const [editItemValue, setEditItemValue] = useState('');
   const [showNotificationPanel, setShowNotificationPanel] = useState(false);
-  
-  // New state for changelog-driven notifications
+
   const [unseenVersions, setUnseenVersions] = useState<VersionNotification[]>([]);
   const [recentVersions, setRecentVersions] = useState<VersionNotification[]>([]);
   const [totalVersions, setTotalVersions] = useState(0);
   const [showPopup, setShowPopup] = useState(false);
 
-  // State for confirmation dialog
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
-    itemType: 'clients' | 'campaigns' | 'publications';
+    itemType: ConfigItemType;
     itemIndex: number;
     itemName: string;
   } | null>(null);
 
   useEffect(() => {
     async function loadConfigAndState() {
-      // Load portal config
       const configRes = await fetch('/api/config');
       const configData = await configRes.json();
       if (!configData.error) {
@@ -51,21 +51,18 @@ export default function AdminPage() {
         });
       }
 
-      // Load admin state and unseen versions
       const stateRes = await fetch('/api/admin-state');
       const stateData = await stateRes.json();
       if (!stateData.error) {
         setUnseenVersions(stateData.unseenVersions || []);
         setRecentVersions(stateData.recentVersions || []);
         setTotalVersions(stateData.unseenVersions?.length || 0);
-        
-        // Show popup if there are unseen versions
         if (stateData.hasUnseen) {
           setShowPopup(true);
         }
       }
     }
-    
+
     loadConfigAndState();
   }, []);
 
@@ -74,58 +71,28 @@ export default function AdminPage() {
       const res = await fetch('/api/admin-state', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          action: 'dismiss',
-          version: packageJson.version
-        })
+        body: JSON.stringify({ action: 'dismiss', version: packageJson.version })
       });
-      
       if (res.ok) {
         setShowPopup(false);
         setUnseenVersions([]);
       }
     } catch (error) {
       console.error('Failed to dismiss notification:', error);
-      // Dismiss locally even if API fails
       setShowPopup(false);
     }
   };
 
-  async function saveConfig() {
-    setStatus('Saving...');
+  async function saveCfg(nextCfg: PortalConfig): Promise<boolean> {
     const res = await fetch('/api/config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(cfg)
+      body: JSON.stringify(nextCfg)
     });
-    if (res.ok) {
-      setStatus('Saved!');
-      // Reload config after saving to get updated values
-      const reloadRes = await fetch('/api/config');
-      const reloadData = await reloadRes.json();
-      if (!reloadData.error) {
-        setCfg({
-          clients: reloadData.clients || [],
-          campaigns: reloadData.campaigns || [],
-          publications: reloadData.publications || [],
-          driveSettings: reloadData.driveSettings || {},
-          adminNotifications: reloadData.adminNotifications || []
-        });
-      }
-      setTimeout(() => setStatus(''), 2000);
-    } else {
-      setStatus('Save failed');
-    }
+    return res.ok;
   }
 
-  function addItem(type: 'clients' | 'campaigns' | 'publications') {
-    const value = prompt(`Enter new ${type.slice(0, -1)}:`);
-    if (value && value.trim()) {
-      setCfg({ ...cfg, [type]: [...cfg[type], value.trim()] });
-    }
-  }
-
-  function startAddingItem(type: 'clients' | 'campaigns' | 'publications') {
+  function startAddingItem(type: ConfigItemType) {
     setAddingItem(type);
     setNewItemValue('');
   }
@@ -135,66 +102,35 @@ export default function AdminPage() {
     setNewItemValue('');
   }
 
-  async function saveNewItem(type: 'clients' | 'campaigns' | 'publications') {
+  async function saveNewItem(type: ConfigItemType) {
     if (!newItemValue.trim()) return;
-    
     const newItem = { name: newItemValue.trim(), hidden: false };
     const updatedCfg = { ...cfg, [type]: [...cfg[type], newItem] };
     setCfg(updatedCfg);
-    
-    // Save immediately to the backend
-    const res = await fetch('/api/config', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedCfg)
-    });
-    
-    if (res.ok) {
+    const ok = await saveCfg(updatedCfg);
+    if (ok) {
       setAddingItem(null);
       setNewItemValue('');
     } else {
-      // Revert on error
       setCfg(cfg);
       alert('Failed to save new item');
     }
   }
 
-  async function removeItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
-    // Defensive check: ensure item exists
-    if (!cfg[type] || !cfg[type][index] || !cfg[type][index].name) {
-      console.error('Cannot remove item: item not found at index', index);
-      return;
-    }
-    
-    const itemName = cfg[type][index].name;
-    // Show confirmation dialog instead of immediately removing
-    setConfirmDialog({
-      isOpen: true,
-      itemType: type,
-      itemIndex: index,
-      itemName: itemName
-    });
+  function removeItem(type: ConfigItemType, index: number) {
+    const item = cfg[type][index];
+    if (!item?.name) return;
+    setConfirmDialog({ isOpen: true, itemType: type, itemIndex: index, itemName: item.name });
   }
 
   async function confirmRemoveItem() {
     if (!confirmDialog) return;
-    
     const { itemType, itemIndex } = confirmDialog;
     const updatedCfg = { ...cfg, [itemType]: cfg[itemType].filter((_, i) => i !== itemIndex) };
     setCfg(updatedCfg);
-    
-    // Close dialog
     setConfirmDialog(null);
-    
-    // Save immediately to the backend
-    const res = await fetch('/api/config', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedCfg)
-    });
-    
-    if (!res.ok) {
-      // Revert on error
+    const ok = await saveCfg(updatedCfg);
+    if (!ok) {
       setCfg(cfg);
       alert('Failed to remove item');
     }
@@ -204,10 +140,9 @@ export default function AdminPage() {
     setConfirmDialog(null);
   }
 
-  function startEditingItem(type: 'clients' | 'campaigns' | 'publications', index: number) {
-    const item = cfg[type][index];
+  function startEditingItem(type: ConfigItemType, index: number) {
     setEditingItem({ type, index });
-    setEditItemValue(item.name);
+    setEditItemValue(cfg[type][index].name);
   }
 
   function cancelEditingItem() {
@@ -217,32 +152,37 @@ export default function AdminPage() {
 
   async function saveEditedItem() {
     if (!editingItem || !editItemValue.trim()) return;
-    
     const { type, index } = editingItem;
-    // Store a deep copy of the original config for proper rollback
-    const originalCfg = { 
-      ...cfg, 
-      [type]: [...cfg[type].map(item => ({ ...item }))] 
-    };
+    const originalCfg = { ...cfg, [type]: cfg[type].map(item => ({ ...item })) };
     const updatedItems = [...cfg[type]];
     updatedItems[index] = { ...updatedItems[index], name: editItemValue.trim() };
     const updatedCfg = { ...cfg, [type]: updatedItems };
     setCfg(updatedCfg);
-    
-    // Save immediately to the backend
-    const res = await fetch('/api/config', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedCfg)
-    });
-    
-    if (res.ok) {
+    const ok = await saveCfg(updatedCfg);
+    if (ok) {
       setEditingItem(null);
       setEditItemValue('');
     } else {
-      // Revert on error
       setCfg(originalCfg);
       alert('Failed to save edited item');
+    }
+  }
+
+  async function toggleVisibility(type: ConfigItemType, itemName: string) {
+    const updatedItems = cfg[type].map(item =>
+      item.name === itemName ? { ...item, hidden: !item.hidden } : item
+    );
+    const newCfg = { ...cfg, [type]: updatedItems };
+    setCfg(newCfg);
+    try {
+      const ok = await saveCfg(newCfg);
+      if (!ok) {
+        setCfg(cfg);
+        alert('Failed to update visibility');
+      }
+    } catch {
+      setCfg(cfg);
+      alert('Failed to update visibility');
     }
   }
 
@@ -252,29 +192,20 @@ export default function AdminPage() {
       alert('Please enter a folder URL first');
       return;
     }
-
-    // Extract folder ID from URL
     const match = folderUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
     const folderId = match ? match[1] : null;
-    
     if (!folderId) {
-      alert('Invalid folder URL format');
+      alert('Invalid folder URL format. Expected: https://drive.google.com/drive/folders/FOLDER_ID');
       return;
     }
-
     setVerifying(true);
     setVerifyStatus(null);
-
     try {
       const res = await fetch(`/api/verify-folder?id=${folderId}`);
       const data = await res.json();
       setVerifyStatus(data);
-    } catch (error) {
-      setVerifyStatus({
-        success: false,
-        error: 'Failed to verify folder access',
-        message: '❌ Verification failed'
-      });
+    } catch {
+      setVerifyStatus({ success: false, error: 'Failed to verify folder access', message: '❌ Verification failed' });
     } finally {
       setVerifying(false);
     }
@@ -282,7 +213,6 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      {/* Version Notification Popup */}
       {showPopup && unseenVersions.length > 0 && (
         <VersionNotificationPopup
           unseenVersions={unseenVersions}
@@ -291,7 +221,6 @@ export default function AdminPage() {
         />
       )}
 
-      {/* Version Notification Panel */}
       <VersionNotificationPanel
         isOpen={showNotificationPanel}
         onClose={() => setShowNotificationPanel(false)}
@@ -299,7 +228,6 @@ export default function AdminPage() {
         totalVersions={totalVersions}
       />
 
-      {/* Confirmation Dialog for Deletions */}
       {confirmDialog && (
         <ConfirmDialog
           isOpen={confirmDialog.isOpen}
@@ -332,424 +260,29 @@ export default function AdminPage() {
         </div>
 
         <div className="space-y-6">
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold">Clients</h3>
-              <button className="btn btn-primary" onClick={() => startAddingItem('clients')}>+ Add</button>
-            </div>
-            <div className="space-y-2">
-              {[...cfg.clients].sort((a, b) => a.name.localeCompare(b.name)).map((client, sortedIndex) => {
-                const actualIndex = cfg.clients.findIndex(c => c.name === client.name);
-                const isEditing = editingItem?.type === 'clients' && editingItem?.index === actualIndex;
-                
-                return (
-                  <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    {isEditing ? (
-                      <>
-                        <input
-                          type="text"
-                          className="flex-1 px-2 py-1 border rounded mr-2"
-                          value={editItemValue}
-                          onChange={(e) => setEditItemValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveEditedItem();
-                            if (e.key === 'Escape') cancelEditingItem();
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={saveEditedItem}
-                            className="text-green-600 hover:text-green-700 p-1 rounded"
-                            title="Save changes"
-                            disabled={!editItemValue.trim()}
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={cancelEditingItem}
-                            className="text-gray-600 hover:text-gray-700 p-1 rounded"
-                            title="Cancel"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className={client.hidden ? 'text-gray-400 line-through' : ''}>{client.name}</span>
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              const updatedClients = cfg.clients.map(c => 
-                                c.name === client.name ? { ...c, hidden: !c.hidden } : c
-                              );
-                              const newCfg = { ...cfg, clients: updatedClients };
-                              setCfg(newCfg);
-                              
-                              // Save immediately to the backend
-                              const res = await fetch('/api/config', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(newCfg)
-                              });
-                              
-                              if (!res.ok) {
-                                // Revert on error
-                                setCfg(cfg);
-                                alert('Failed to update visibility');
-                              }
-                            }}
-                            className="text-gray-500 hover:text-gray-700 p-1 rounded"
-                            title={client.hidden ? 'Show this client' : 'Hide this client'}
-                          >
-                            {client.hidden ? (
-                              // Eye with slash (hidden)
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                              </svg>
-                            ) : (
-                              // Eye (visible)
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            className="text-blue-600 hover:text-blue-700 p-1 rounded" 
-                            onClick={() => startEditingItem('clients', actualIndex)}
-                            title="Edit client name"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                          <button className="text-red-600 hover:text-red-700" onClick={() => removeItem('clients', actualIndex)}>Remove</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-              {addingItem === 'clients' && (
-                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
-                  <input
-                    type="text"
-                    className="flex-1 px-2 py-1 border rounded"
-                    placeholder="Enter new client name"
-                    value={newItemValue}
-                    onChange={(e) => setNewItemValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveNewItem('clients');
-                      if (e.key === 'Escape') cancelAddingItem();
-                    }}
-                    autoFocus
-                  />
-                  <button 
-                    className="btn btn-primary text-sm px-3 py-1" 
-                    onClick={() => saveNewItem('clients')}
-                    disabled={!newItemValue.trim()}
-                  >
-                    Save
-                  </button>
-                  <button 
-                    className="btn btn-secondary text-sm px-3 py-1" 
-                    onClick={cancelAddingItem}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
+          {(['clients', 'campaigns', 'publications'] as ConfigItemType[]).map((type) => (
+            <ItemList
+              key={type}
+              label={type.charAt(0).toUpperCase() + type.slice(1)}
+              items={cfg[type]}
+              isAdding={addingItem === type}
+              newItemValue={newItemValue}
+              editingIndex={editingItem?.type === type ? editingItem.index : null}
+              editItemValue={editItemValue}
+              onStartAdd={() => startAddingItem(type)}
+              onCancelAdd={cancelAddingItem}
+              onSaveNew={() => saveNewItem(type)}
+              onNewValueChange={setNewItemValue}
+              onStartEdit={(index) => startEditingItem(type, index)}
+              onCancelEdit={cancelEditingItem}
+              onSaveEdit={saveEditedItem}
+              onEditValueChange={setEditItemValue}
+              onRemove={(index) => removeItem(type, index)}
+              onToggleVisibility={(name) => toggleVisibility(type, name)}
+            />
+          ))}
 
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold">Campaigns</h3>
-              <button className="btn btn-primary" onClick={() => startAddingItem('campaigns')}>+ Add</button>
-            </div>
-            <div className="space-y-2">
-              {[...cfg.campaigns].sort((a, b) => a.name.localeCompare(b.name)).map((campaign, sortedIndex) => {
-                const actualIndex = cfg.campaigns.findIndex(c => c.name === campaign.name);
-                const isEditing = editingItem?.type === 'campaigns' && editingItem?.index === actualIndex;
-                
-                return (
-                  <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    {isEditing ? (
-                      <>
-                        <input
-                          type="text"
-                          className="flex-1 px-2 py-1 border rounded mr-2"
-                          value={editItemValue}
-                          onChange={(e) => setEditItemValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveEditedItem();
-                            if (e.key === 'Escape') cancelEditingItem();
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={saveEditedItem}
-                            className="text-green-600 hover:text-green-700 p-1 rounded"
-                            title="Save changes"
-                            disabled={!editItemValue.trim()}
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={cancelEditingItem}
-                            className="text-gray-600 hover:text-gray-700 p-1 rounded"
-                            title="Cancel"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className={campaign.hidden ? 'text-gray-400 line-through' : ''}>{campaign.name}</span>
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              const updatedCampaigns = cfg.campaigns.map(c => 
-                                c.name === campaign.name ? { ...c, hidden: !c.hidden } : c
-                              );
-                              const newCfg = { ...cfg, campaigns: updatedCampaigns };
-                              setCfg(newCfg);
-                              
-                              // Save immediately to the backend
-                              const res = await fetch('/api/config', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(newCfg)
-                              });
-                              
-                              if (!res.ok) {
-                                // Revert on error
-                                setCfg(cfg);
-                                alert('Failed to update visibility');
-                              }
-                            }}
-                            className="text-gray-500 hover:text-gray-700 p-1 rounded"
-                            title={campaign.hidden ? 'Show this campaign' : 'Hide this campaign'}
-                          >
-                            {campaign.hidden ? (
-                              // Eye with slash (hidden)
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                              </svg>
-                            ) : (
-                              // Eye (visible)
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            className="text-blue-600 hover:text-blue-700 p-1 rounded" 
-                            onClick={() => startEditingItem('campaigns', actualIndex)}
-                            title="Edit campaign name"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                          <button className="text-red-600 hover:text-red-700" onClick={() => removeItem('campaigns', actualIndex)}>Remove</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-              {addingItem === 'campaigns' && (
-                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
-                  <input
-                    type="text"
-                    className="flex-1 px-2 py-1 border rounded"
-                    placeholder="Enter new campaign name"
-                    value={newItemValue}
-                    onChange={(e) => setNewItemValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveNewItem('campaigns');
-                      if (e.key === 'Escape') cancelAddingItem();
-                    }}
-                    autoFocus
-                  />
-                  <button 
-                    className="btn btn-primary text-sm px-3 py-1" 
-                    onClick={() => saveNewItem('campaigns')}
-                    disabled={!newItemValue.trim()}
-                  >
-                    Save
-                  </button>
-                  <button 
-                    className="btn btn-secondary text-sm px-3 py-1" 
-                    onClick={cancelAddingItem}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="text-lg font-semibold">Publications</h3>
-              <button className="btn btn-primary" onClick={() => startAddingItem('publications')}>+ Add</button>
-            </div>
-            <div className="space-y-2">
-              {[...cfg.publications].sort((a, b) => a.name.localeCompare(b.name)).map((pub, sortedIndex) => {
-                const actualIndex = cfg.publications.findIndex(p => p.name === pub.name);
-                const isEditing = editingItem?.type === 'publications' && editingItem?.index === actualIndex;
-                
-                return (
-                  <div key={sortedIndex} className="flex justify-between items-center bg-gray-50 p-2 rounded">
-                    {isEditing ? (
-                      <>
-                        <input
-                          type="text"
-                          className="flex-1 px-2 py-1 border rounded mr-2"
-                          value={editItemValue}
-                          onChange={(e) => setEditItemValue(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') saveEditedItem();
-                            if (e.key === 'Escape') cancelEditingItem();
-                          }}
-                          autoFocus
-                        />
-                        <div className="flex gap-2">
-                          <button
-                            onClick={saveEditedItem}
-                            className="text-green-600 hover:text-green-700 p-1 rounded"
-                            title="Save changes"
-                            disabled={!editItemValue.trim()}
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={cancelEditingItem}
-                            className="text-gray-600 hover:text-gray-700 p-1 rounded"
-                            title="Cancel"
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className={pub.hidden ? 'text-gray-400 line-through' : ''}>{pub.name}</span>
-                          <button
-                            onClick={async (e) => {
-                              e.preventDefault();
-                              const updatedPublications = cfg.publications.map(p => 
-                                p.name === pub.name ? { ...p, hidden: !p.hidden } : p
-                              );
-                              const newCfg = { ...cfg, publications: updatedPublications };
-                              setCfg(newCfg);
-                              
-                              // Save immediately to the backend
-                              const res = await fetch('/api/config', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(newCfg)
-                              });
-                              
-                              if (!res.ok) {
-                                // Revert on error
-                                setCfg(cfg);
-                                alert('Failed to update visibility');
-                              }
-                            }}
-                            className="text-gray-500 hover:text-gray-700 p-1 rounded"
-                            title={pub.hidden ? 'Show this publication' : 'Hide this publication'}
-                          >
-                            {pub.hidden ? (
-                              // Eye with slash (hidden)
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
-                              </svg>
-                            ) : (
-                              // Eye (visible)
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                        <div className="flex gap-2">
-                          <button 
-                            className="text-blue-600 hover:text-blue-700 p-1 rounded" 
-                            onClick={() => startEditingItem('publications', actualIndex)}
-                            title="Edit publication name"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                            </svg>
-                          </button>
-                          <button className="text-red-600 hover:text-red-700" onClick={() => removeItem('publications', actualIndex)}>Remove</button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-              {addingItem === 'publications' && (
-                <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
-                  <input
-                    type="text"
-                    className="flex-1 px-2 py-1 border rounded"
-                    placeholder="Enter new publication name"
-                    value={newItemValue}
-                    onChange={(e) => setNewItemValue(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') saveNewItem('publications');
-                      if (e.key === 'Escape') cancelAddingItem();
-                    }}
-                    autoFocus
-                  />
-                  <button 
-                    className="btn btn-primary text-sm px-3 py-1" 
-                    onClick={() => saveNewItem('publications')}
-                    disabled={!newItemValue.trim()}
-                  >
-                    Save
-                  </button>
-                  <button 
-                    className="btn btn-secondary text-sm px-3 py-1" 
-                    onClick={cancelAddingItem}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Google Drive Parent Folder Configuration */}
+          {/* Google Drive Settings */}
           <div className="pt-4 border-t">
             <h3 className="text-lg font-semibold mb-2">Google Drive Settings</h3>
             <div className="space-y-3">
@@ -764,10 +297,7 @@ export default function AdminPage() {
                   value={cfg.driveSettings?.parentFolderUrl || ''}
                   onChange={(e) => setCfg({
                     ...cfg,
-                    driveSettings: {
-                      ...cfg.driveSettings,
-                      parentFolderUrl: e.target.value
-                    }
+                    driveSettings: { ...cfg.driveSettings, parentFolderUrl: e.target.value }
                   })}
                 />
                 <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
@@ -790,8 +320,7 @@ export default function AdminPage() {
                     ✓ Current parent folder: <strong>{cfg.driveSettings.rootFolderName}</strong>
                   </p>
                 )}
-                
-                {/* Verify Folder Access Button */}
+
                 <button
                   type="button"
                   className="mt-3 btn btn-secondary text-sm"
@@ -801,29 +330,23 @@ export default function AdminPage() {
                   {verifying ? 'Verifying...' : '🔍 Verify Folder Access'}
                 </button>
 
-                {/* Save Drive Settings Button */}
                 <button
                   type="button"
                   className="mt-3 ml-2 btn btn-primary text-sm"
                   onClick={async () => {
                     setStatus('Saving drive settings...');
-                    const res = await fetch('/api/config', {
-                      method: 'PUT',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify(cfg)
-                    });
-                    if (res.ok) {
-                      setStatus('Drive settings saved!');
-                      setTimeout(() => setStatus(''), 2000);
-                    } else {
-                      setStatus('Save failed');
-                    }
+                    const ok = await saveCfg(cfg);
+                    setStatus(ok ? 'Drive settings saved!' : 'Save failed');
+                    if (ok) setTimeout(() => setStatus(''), 2000);
                   }}
                 >
                   💾 Save Drive Settings
                 </button>
 
-                {/* Verification Results */}
+                {status && (
+                  <p className="mt-2 text-sm text-gray-600">{status}</p>
+                )}
+
                 {verifyStatus && (
                   <div className={`mt-3 p-3 rounded text-xs ${
                     verifyStatus.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
@@ -859,8 +382,6 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
-
-
         </div>
       </div>
     </div>
