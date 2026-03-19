@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-03-18
+
+### Changed
+- **Brand Design Refresh**: Applied JJA brand colors (#122454 navy primary, #8E2A2A maroon secondary) across the entire UI
+- **Header**: Full-width navy header with responsive layout; company name hides on mobile to prevent wrapping
+- **Upload Page**: 2-column metadata form grid; SVG icons replace emoji; brand-colored progress bar and upload status
+- **Login Page**: Polished card with brand accent bar and lock icon
+- **Admin Panel**: Replaced long scrolling lists with tabbed layout (Clients / Campaigns / Publications / Drive Settings), per-tab search filter, hover-reveal row actions, and inline editing
+
 ## [1.3.1] - 2025-12-26
 
 ### Changed
