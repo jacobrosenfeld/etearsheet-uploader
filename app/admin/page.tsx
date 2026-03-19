@@ -212,7 +212,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {showPopup && unseenVersions.length > 0 && (
         <VersionNotificationPopup
           unseenVersions={unseenVersions}
@@ -242,57 +242,62 @@ export default function AdminPage() {
       )}
 
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-2xl font-bold">Admin Configuration</h2>
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-semibold text-slate-800">Admin Configuration</h2>
+            <p className="text-xs text-slate-400 mt-0.5">Manage clients, campaigns, and publications</p>
+          </div>
           <button
             onClick={() => setShowNotificationPanel(true)}
-            className="relative flex items-center gap-2 p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+            className="relative flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors border border-slate-100 hover:border-brand/20"
             title="View updates and announcements"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
             <span className="text-sm font-medium">Updates</span>
             {unseenVersions.length > 0 && (
-              <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-secondary rounded-full"></span>
             )}
           </button>
         </div>
 
         <div className="space-y-6">
-          {(['clients', 'campaigns', 'publications'] as ConfigItemType[]).map((type) => (
-            <ItemList
-              key={type}
-              label={type.charAt(0).toUpperCase() + type.slice(1)}
-              items={cfg[type]}
-              isAdding={addingItem === type}
-              newItemValue={newItemValue}
-              editingIndex={editingItem?.type === type ? editingItem.index : null}
-              editItemValue={editItemValue}
-              onStartAdd={() => startAddingItem(type)}
-              onCancelAdd={cancelAddingItem}
-              onSaveNew={() => saveNewItem(type)}
-              onNewValueChange={setNewItemValue}
-              onStartEdit={(index) => startEditingItem(type, index)}
-              onCancelEdit={cancelEditingItem}
-              onSaveEdit={saveEditedItem}
-              onEditValueChange={setEditItemValue}
-              onRemove={(index) => removeItem(type, index)}
-              onToggleVisibility={(name) => toggleVisibility(type, name)}
-            />
+          {/* Divider sections for each config type */}
+          {(['clients', 'campaigns', 'publications'] as ConfigItemType[]).map((type, i) => (
+            <div key={type} className={i > 0 ? 'pt-5 border-t border-slate-100' : ''}>
+              <ItemList
+                label={type.charAt(0).toUpperCase() + type.slice(1)}
+                items={cfg[type]}
+                isAdding={addingItem === type}
+                newItemValue={newItemValue}
+                editingIndex={editingItem?.type === type ? editingItem.index : null}
+                editItemValue={editItemValue}
+                onStartAdd={() => startAddingItem(type)}
+                onCancelAdd={cancelAddingItem}
+                onSaveNew={() => saveNewItem(type)}
+                onNewValueChange={setNewItemValue}
+                onStartEdit={(index) => startEditingItem(type, index)}
+                onCancelEdit={cancelEditingItem}
+                onSaveEdit={saveEditedItem}
+                onEditValueChange={setEditItemValue}
+                onRemove={(index) => removeItem(type, index)}
+                onToggleVisibility={(name) => toggleVisibility(type, name)}
+              />
+            </div>
           ))}
 
           {/* Google Drive Settings */}
-          <div className="pt-4 border-t">
-            <h3 className="text-lg font-semibold mb-2">Google Drive Settings</h3>
+          <div className="pt-5 border-t border-slate-100">
+            <h3 className="text-base font-semibold text-slate-700 mb-3">Google Drive Settings</h3>
             <div className="space-y-3">
               <div>
-                <label className="label text-sm font-medium text-gray-700">
-                  Parent Folder URL (optional)
+                <label className="label">
+                  Parent Folder URL <span className="text-slate-400 font-normal">(optional)</span>
                 </label>
                 <input
                   type="text"
-                  className="input w-full"
+                  className="input"
                   placeholder="https://drive.google.com/drive/folders/YOUR_FOLDER_ID"
                   value={cfg.driveSettings?.parentFolderUrl || ''}
                   onChange={(e) => setCfg({
@@ -300,66 +305,82 @@ export default function AdminPage() {
                     driveSettings: { ...cfg.driveSettings, parentFolderUrl: e.target.value }
                   })}
                 />
-                <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded text-xs">
-                  <p className="font-semibold text-yellow-800 mb-1">⚠️ Important: Share the folder with the service account</p>
-                  <p className="text-yellow-700 mb-2">
-                    After pasting the folder URL, you must share that Google Drive folder with:
+
+                <div className="mt-3 p-4 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+                  <p className="font-semibold text-amber-800 mb-1.5">⚠️ Share the folder with the service account</p>
+                  <p className="text-amber-700 mb-2">
+                    After pasting the folder URL, share that Google Drive folder with:
                   </p>
-                  <code className="block bg-yellow-100 px-2 py-1 rounded text-yellow-900 break-all">
+                  <code className="block bg-amber-100 px-2.5 py-1.5 rounded-lg text-amber-900 break-all font-mono">
                     {process.env.NEXT_PUBLIC_SERVICE_ACCOUNT_EMAIL || 'your-service-account@project.iam.gserviceaccount.com'}
                   </code>
-                  <p className="text-yellow-700 mt-2">
-                    Give it <strong>&quot;Editor&quot;</strong> permissions. Without this, uploads will fail.
+                  <p className="text-amber-700 mt-2">
+                    Grant <strong>&quot;Editor&quot;</strong> permissions. Without this, uploads will fail.
                   </p>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  📁 Paste a Google Drive folder URL to use as the parent folder. Leave empty to use &quot;JJA eTearsheets&quot; in your root Drive.
+
+                <p className="text-xs text-slate-400 mt-2">
+                  Paste a Google Drive folder URL to use as the parent folder. Leave empty to use &quot;JJA eTearsheets&quot; in your root Drive.
                 </p>
+
                 {cfg.driveSettings?.rootFolderName && (
-                  <p className="text-xs text-green-600 mt-1">
-                    ✓ Current parent folder: <strong>{cfg.driveSettings.rootFolderName}</strong>
+                  <p className="text-xs text-emerald-600 mt-1.5 flex items-center gap-1">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                    </svg>
+                    Current parent folder: <strong>{cfg.driveSettings.rootFolderName}</strong>
                   </p>
                 )}
 
-                <button
-                  type="button"
-                  className="mt-3 btn btn-secondary text-sm"
-                  onClick={verifyFolderAccess}
-                  disabled={verifying || !cfg.driveSettings?.parentFolderUrl}
-                >
-                  {verifying ? 'Verifying...' : '🔍 Verify Folder Access'}
-                </button>
+                <div className="flex gap-2 mt-4">
+                  <button
+                    type="button"
+                    className="btn-secondary text-sm"
+                    onClick={verifyFolderAccess}
+                    disabled={verifying || !cfg.driveSettings?.parentFolderUrl}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {verifying ? 'Verifying…' : 'Verify Folder Access'}
+                  </button>
 
-                <button
-                  type="button"
-                  className="mt-3 ml-2 btn btn-primary text-sm"
-                  onClick={async () => {
-                    setStatus('Saving drive settings...');
-                    const ok = await saveCfg(cfg);
-                    setStatus(ok ? 'Drive settings saved!' : 'Save failed');
-                    if (ok) setTimeout(() => setStatus(''), 2000);
-                  }}
-                >
-                  💾 Save Drive Settings
-                </button>
+                  <button
+                    type="button"
+                    className="btn-primary text-sm"
+                    onClick={async () => {
+                      setStatus('Saving…');
+                      const ok = await saveCfg(cfg);
+                      setStatus(ok ? 'Saved!' : 'Save failed');
+                      if (ok) setTimeout(() => setStatus(''), 2000);
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                    </svg>
+                    Save Drive Settings
+                  </button>
+                </div>
 
                 {status && (
-                  <p className="mt-2 text-sm text-gray-600">{status}</p>
+                  <p className={`mt-2 text-xs font-medium ${status === 'Saved!' ? 'text-emerald-600' : status === 'Save failed' ? 'text-brand-secondary' : 'text-slate-500'}`}>
+                    {status}
+                  </p>
                 )}
 
                 {verifyStatus && (
-                  <div className={`mt-3 p-3 rounded text-xs ${
-                    verifyStatus.success ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                  <div className={`mt-3 p-4 rounded-xl text-xs border ${
+                    verifyStatus.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'
                   }`}>
-                    <p className={`font-semibold mb-2 ${verifyStatus.success ? 'text-green-800' : 'text-red-800'}`}>
+                    <p className={`font-semibold mb-2 ${verifyStatus.success ? 'text-emerald-800' : 'text-red-800'}`}>
                       {verifyStatus.message}
                     </p>
                     {verifyStatus.success && verifyStatus.folder && (
-                      <div className="text-gray-700 space-y-1">
+                      <div className="text-slate-600 space-y-1">
                         <p><strong>Folder Name:</strong> {verifyStatus.folder.name}</p>
                         <p><strong>Folder ID:</strong> {verifyStatus.folder.id}</p>
                         {verifyStatus.folder.isSharedDrive && (
-                          <p className="text-blue-700"><strong>Type:</strong> Shared Drive (DriveId: {verifyStatus.folder.driveId})</p>
+                          <p className="text-brand"><strong>Type:</strong> Shared Drive (DriveId: {verifyStatus.folder.driveId})</p>
                         )}
                         {!verifyStatus.folder.isSharedDrive && (
                           <p><strong>Type:</strong> My Drive</p>
@@ -369,8 +390,8 @@ export default function AdminPage() {
                     )}
                     {verifyStatus.recommendations && verifyStatus.recommendations.length > 0 && (
                       <div className="mt-2">
-                        <p className="font-semibold text-yellow-800 mb-1">Recommendations:</p>
-                        <ul className="list-disc list-inside text-yellow-700 space-y-1">
+                        <p className="font-semibold text-amber-800 mb-1">Recommendations:</p>
+                        <ul className="list-disc list-inside text-amber-700 space-y-1">
                           {verifyStatus.recommendations.map((rec: string, i: number) => (
                             <li key={i}>{rec}</li>
                           ))}

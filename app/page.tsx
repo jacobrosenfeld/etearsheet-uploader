@@ -267,62 +267,75 @@ export default function HomePage() {
     await performUpload();
   }
 
-  if (loading) return <div className="card">Loading configuration...</div>;
-  if (!cfg) return <div className="card">No configuration available</div>;
+  if (loading) return <div className="card text-slate-500">Loading configuration…</div>;
+  if (!cfg) return <div className="card text-slate-500">No configuration available</div>;
 
   const isUploading = status === 'Uploading...';
   const isSuccess = status === 'success';
   const isError = status.startsWith('error:');
 
   return (
-    <div className="space-y-6">
-      <div className="card space-y-4">
-        <h2 className="text-xl font-semibold">Upload a File</h2>
+    <div className="space-y-5">
+      <div className="card space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-slate-800">Upload a Tearsheet</h2>
+        </div>
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="text-sm text-blue-800">
-            <strong>📁 Files will be organized in Google Drive:</strong><br/>
+        {/* Folder destination info */}
+        <div className="flex items-start gap-3 bg-brand/5 border border-brand/15 rounded-xl p-3.5">
+          <span className="text-brand mt-0.5">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+            </svg>
+          </span>
+          <div className="text-sm text-brand/90">
+            <span className="font-semibold">Files will be organized in Google Drive:</span>{' '}
             {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'} → Client → Campaign → Publication
           </div>
         </div>
 
-        <form onSubmit={doUpload} className="grid gap-4">
-          <div>
-            <label className="label">Publication</label>
-            <select className="input" value={pub} onChange={(e) => setPub(e.target.value)}>
-              <option value="">Select publication…</option>
-              {[...cfg.publications].filter(p => !p.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(p =>
-                <option key={p.name} value={p.name}>{p.name}</option>
-              )}
-            </select>
+        <form onSubmit={doUpload} className="space-y-4">
+          {/* 2-column grid for metadata fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="label">Publication</label>
+              <select className="input" value={pub} onChange={(e) => setPub(e.target.value)}>
+                <option value="">Select publication…</option>
+                {[...cfg.publications].filter(p => !p.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(p =>
+                  <option key={p.name} value={p.name}>{p.name}</option>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="label">Client</label>
+              <select className="input" value={client} onChange={(e) => setClient(e.target.value)}>
+                <option value="">Select client…</option>
+                {[...cfg.clients].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c =>
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="label">Campaign</label>
+              <select className="input" value={campaign} onChange={(e) => setCampaign(e.target.value)}>
+                <option value="">Select campaign…</option>
+                {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c =>
+                  <option key={c.name} value={c.name}>{c.name}</option>
+                )}
+              </select>
+            </div>
+            <div>
+              <label className="label">Publication Date</label>
+              <input
+                type="date"
+                className="input"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+              />
+            </div>
           </div>
-          <div>
-            <label className="label">Client</label>
-            <select className="input" value={client} onChange={(e) => setClient(e.target.value)}>
-              <option value="">Select client…</option>
-              {[...cfg.clients].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c =>
-                <option key={c.name} value={c.name}>{c.name}</option>
-              )}
-            </select>
-          </div>
-          <div>
-            <label className="label">Campaign</label>
-            <select className="input" value={campaign} onChange={(e) => setCampaign(e.target.value)}>
-              <option value="">Select campaign…</option>
-              {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c =>
-                <option key={c.name} value={c.name}>{c.name}</option>
-              )}
-            </select>
-          </div>
-          <div>
-            <label className="label">Publication Date</label>
-            <input
-              type="date"
-              className="input"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-          </div>
+
+          {/* File drop zone */}
           <div>
             <label className="label">File</label>
             <div
@@ -335,8 +348,8 @@ export default function HomePage() {
                 relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
                 transition-all duration-200 ease-in-out
                 ${isDragging
-                  ? 'border-blue-500 bg-blue-50 scale-[1.02]'
-                  : 'border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'}
+                  ? 'border-brand bg-brand/5 scale-[1.01]'
+                  : 'border-slate-200 bg-slate-50 hover:border-slate-300 hover:bg-white'}
               `}
             >
               <input
@@ -348,43 +361,57 @@ export default function HomePage() {
               <div className="space-y-2">
                 {file ? (
                   <>
-                    <div className="text-4xl" role="img" aria-label="Document file selected">📄</div>
-                    <div className="text-sm font-semibold text-gray-700">{file.name}</div>
-                    <div className="text-xs text-gray-500">{formatFileSize(file.size)}</div>
+                    <div className="flex justify-center">
+                      <svg className="w-10 h-10 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="text-sm font-semibold text-slate-700">{file.name}</div>
+                    <div className="text-xs text-slate-400">{formatFileSize(file.size)}</div>
                     <button
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
-                      className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+                      className="mt-1 text-xs text-brand-secondary hover:text-brand-secondary-hover underline"
                     >
                       Remove file
                     </button>
                   </>
                 ) : (
                   <>
-                    <div className="text-5xl mb-2" role="img" aria-label={isDragging ? 'Drop file here' : 'Drag and drop file'}>
-                      {isDragging ? '📥' : '📎'}
+                    <div className="flex justify-center">
+                      <svg className={`w-10 h-10 transition-colors ${isDragging ? 'text-brand' : 'text-slate-300'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
                     </div>
-                    <div className="text-base font-semibold text-gray-700">
+                    <div className="text-sm font-semibold text-slate-600">
                       {isDragging ? 'Drop file here' : 'Drag & drop file here'}
                     </div>
-                    <div className="text-sm text-gray-500">or click to browse</div>
+                    <div className="text-xs text-slate-400">or click to browse</div>
                   </>
                 )}
               </div>
             </div>
             {file && file.size > LARGE_FILE_WARNING_THRESHOLD && (
-              <div className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+              <div className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2.5">
                 ⚠️ Large file ({formatFileSize(file.size)}) — upload may take several minutes.
               </div>
             )}
           </div>
 
-          <div className="flex gap-3">
-            <button className="btn btn-primary flex-1" type="submit" disabled={isUploading}>
-              {isUploading ? 'Uploading…' : 'Upload'}
+          <div className="flex gap-3 pt-1">
+            <button className="btn-primary flex-1 justify-center" type="submit" disabled={isUploading}>
+              {isUploading ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  Uploading…
+                </>
+              ) : 'Upload'}
             </button>
             {isUploading && (
-              <button type="button" className="btn btn-secondary" onClick={cancelUpload}>
+              <button type="button" className="btn-secondary" onClick={cancelUpload}>
                 Cancel
               </button>
             )}
@@ -394,29 +421,31 @@ export default function HomePage() {
         {/* Upload progress */}
         {isUploading && (
           <div className="space-y-3">
-            <div className="relative w-full bg-gray-200 rounded-full h-8 overflow-hidden shadow-inner">
+            <div className="relative w-full bg-slate-100 rounded-full h-7 overflow-hidden">
               <div
-                className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center"
+                className="absolute inset-0 bg-gradient-to-r from-brand via-brand-hover to-brand h-full transition-all duration-500 ease-out flex items-center justify-center"
                 style={{ width: `${uploadProgress}%` }}
               >
-                <span className="relative z-10 text-sm font-bold text-white drop-shadow-md">
+                <span className="relative z-10 text-xs font-bold text-white drop-shadow">
                   {uploadProgress}%
                 </span>
               </div>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="bg-brand/5 border border-brand/15 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl motion-safe:animate-pulse" role="img" aria-label="Upload in progress">⏳</div>
+                  <svg className="w-5 h-5 text-brand motion-safe:animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
                   <div>
-                    <div className="text-sm font-semibold text-blue-900">Uploading {file?.name}</div>
-                    {file && <div className="text-xs text-blue-600">{formatFileSize(file.size)}</div>}
+                    <div className="text-sm font-semibold text-brand">Uploading {file?.name}</div>
+                    {file && <div className="text-xs text-brand/60">{formatFileSize(file.size)}</div>}
                   </div>
                 </div>
                 {uploadProgress > 0 && estimatedTimeRemaining && estimatedTimeRemaining > 0 && (
                   <div className="text-right">
-                    <div className="text-xs text-blue-500 font-medium">Time remaining</div>
-                    <div className="text-lg font-bold text-blue-700">{estimatedTimeRemaining}s</div>
+                    <div className="text-xs text-brand/60 font-medium">Est. remaining</div>
+                    <div className="text-base font-bold text-brand">{estimatedTimeRemaining}s</div>
                   </div>
                 )}
               </div>
@@ -426,19 +455,23 @@ export default function HomePage() {
 
         {/* Success state */}
         {isSuccess && (
-          <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center gap-3">
-                <span className="text-3xl">🎉</span>
+                <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
                 <div>
-                  <div className="text-base font-bold text-green-700">Upload Successful!</div>
-                  <div className="text-sm text-green-600">Your file has been uploaded to Google Drive.</div>
+                  <div className="text-sm font-semibold text-emerald-800">Upload Successful!</div>
+                  <div className="text-xs text-emerald-600">Your file has been saved to Google Drive.</div>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={resetForNextUpload}
-                className="btn btn-primary text-sm whitespace-nowrap"
+                className="btn-primary text-sm whitespace-nowrap"
               >
                 Upload another
               </button>
@@ -448,14 +481,17 @@ export default function HomePage() {
 
         {/* Error state */}
         {isError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start justify-between gap-3">
-            <div className="text-sm text-red-600">
-              ❌ {status.replace('error:', '')}
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <svg className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="text-sm text-red-700">{status.replace('error:', '')}</div>
             </div>
             <button
               type="button"
               onClick={performUpload}
-              className="btn btn-secondary text-sm whitespace-nowrap"
+              className="btn-secondary text-sm whitespace-nowrap"
               disabled={!file || !pub || !client || !campaign}
             >
               Try again
@@ -466,15 +502,15 @@ export default function HomePage() {
 
       {/* Folder structure preview */}
       <div className="card">
-        <h3 className="text-lg font-semibold mb-2">Folder Structure Preview</h3>
-        <div className="text-xs text-neutral-500 font-mono bg-gray-50 p-3 rounded">
-          📁 {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'}<br/>
-          &nbsp;&nbsp;📁 {client || <em>client</em>}<br/>
-          &nbsp;&nbsp;&nbsp;&nbsp;📁 {campaign || <em>campaign</em>}<br/>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {pub || <em>publication</em>}<br/>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 {pub
+        <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">Destination Preview</h3>
+        <div className="text-xs text-slate-500 font-mono bg-slate-50 border border-slate-100 p-3.5 rounded-xl leading-relaxed">
+          <span className="text-brand">📁</span> {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'}<br/>
+          &nbsp;&nbsp;<span className="text-brand">📁</span> {client || <em className="text-slate-300">client</em>}<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;<span className="text-brand">📁</span> {campaign || <em className="text-slate-300">campaign</em>}<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-brand">📁</span> {pub || <em className="text-slate-300">publication</em>}<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span className="text-slate-400">📄</span> {pub
             ? `${pub}_${date}_${file?.name || 'filename.pdf'}`
-            : <em>publication_YYYY-MM-DD_filename.pdf</em>
+            : <em className="text-slate-300">publication_YYYY-MM-DD_filename.pdf</em>
           }
         </div>
       </div>

@@ -2,21 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+body { @apply bg-slate-50 text-slate-900; }
 
-body { @apply bg-neutral-100 text-neutral-900; }
-.card { @apply bg-white shadow rounded-2xl p-6; }
-.btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded-xl shadow-sm border; }
-.btn-primary { @apply btn bg-black text-white border-black; }
-.btn-secondary { @apply btn bg-gray-200 text-gray-700 border-gray-200; }
-.btn-ghost { @apply btn bg-transparent border-transparent; }
-.btn-header { @apply inline-flex items-center gap-2 bg-blue-600 hover:brightness-110 text-white px-4 py-2 rounded-xl font-semibold transition-all; }
-.input { @apply w-full border rounded-xl px-3 py-2; }
-.label { @apply text-sm font-semibold text-neutral-600; }
+@layer components {
+  .card { @apply bg-white shadow-sm rounded-2xl p-6 border border-slate-100; }
+
+  /* Base button */
+  .btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50; }
+
+  /* Variants */
+  .btn-primary { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 bg-brand text-white border border-brand hover:bg-brand-hover shadow-sm; }
+  .btn-secondary { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 bg-slate-100 text-slate-700 border border-slate-200 hover:bg-slate-200; }
+  .btn-danger { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 bg-brand-secondary text-white border border-brand-secondary hover:bg-brand-secondary-hover shadow-sm; }
+  .btn-ghost { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 bg-transparent border-transparent text-slate-500 hover:bg-slate-100; }
+  .btn-header { @apply inline-flex items-center gap-2 border border-white/25 hover:bg-white/10 text-white px-4 py-2 rounded-lg font-medium transition-all duration-150; }
+
+  /* Form elements */
+  .input { @apply w-full border border-slate-200 rounded-lg px-3 py-2 bg-white text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-all duration-150; }
+  .label { @apply text-sm font-medium text-slate-600 block mb-1; }
+}
 
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: scale(0.95);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
@@ -25,5 +34,5 @@ body { @apply bg-neutral-100 text-neutral-900; }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+  animation: fadeIn 0.2s ease-out;
 }

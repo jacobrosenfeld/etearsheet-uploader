@@ -8,50 +8,55 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 const userRole = await getRole();
 return (
 <html lang="en">
-	<head>
-		<title>JJA eTearsheet Uploader</title>
-		<link rel="icon" href="/favicon.svg" />
-		<link rel="icon" href="/favicon-light.svg" media="(prefers-color-scheme: light)" />
-		<link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
-		<meta name="description" content="JJA - eTearsheet upload portal for publications to submit ad tear sheets." />
-	</head>
-<body className="min-h-screen">
-<div className="max-w-6xl mx-auto p-6 space-y-6">
-<header className="flex items-center justify-between mb-4 pb-4 border-b border-gray-300">
-<a className="flex items-center space-x-3 hover:opacity-80 transition-opacity" href="/">
-	<img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
-	<div>
-		<div className="text-lg font-bold text-gray-900">Joseph Jacobs Advertising</div>
-		<div className="text-sm text-gray-600">eTearsheet Upload Portal</div>
-	</div>
-</a>
-{userRole && (
-<nav className="flex items-center gap-3">
-	<a className="btn-header" href="/">Upload</a>
-	{userRole === 'admin' && <a className="btn-header" href="/admin">Admin Panel</a>}
-	<form action="/api/logout" method="post"><button className="btn-header" type="submit">Logout</button></form>
-</nav>
-)}
-</header>
-{children}
+  <head>
+    <title>JJA eTearsheet Uploader</title>
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="icon" href="/favicon-light.svg" media="(prefers-color-scheme: light)" />
+    <link rel="icon" href="/favicon-dark.svg" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="JJA - eTearsheet upload portal for publications to submit ad tear sheets." />
+  </head>
+  <body className="min-h-screen bg-slate-50 flex flex-col">
 
-<footer className="mt-8 border-t pt-4 text-sm text-center">
-	<div className="flex flex-col sm:flex-row items-center justify-between gap-2">
-		<div>
-			<a href="/privacy" className="underline">Privacy Policy</a>
-		</div>
-		<div className="text-gray-700">Made with <span aria-hidden>❤️</span> in Teaneck, NJ</div>
-		<div className="text-gray-600">© {new Date().getFullYear()} JJA</div>
-		<div>
-			<a className="btn" href="mailto:admin@josephjacobs.org">Contact Support</a>
-		</div>
-	</div>
-	<div className="mt-2 text-xs text-gray-500">
-		<code className="bg-gray-100 px-2 py-1 rounded">v{packageJson.version}</code>
-	</div>
-</footer>
-</div>
-</body>
+    <header className="bg-brand shadow-md">
+      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+        <a className="flex items-center space-x-3 hover:opacity-85 transition-opacity" href="/">
+          <img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
+          <div>
+            <div className="text-base font-bold text-white leading-tight">Joseph Jacobs Advertising</div>
+            <div className="text-xs text-white/65 leading-tight">eTearsheet Upload Portal</div>
+          </div>
+        </a>
+        {userRole && (
+          <nav className="flex items-center gap-2">
+            <a className="btn-header" href="/">Upload</a>
+            {userRole === 'admin' && <a className="btn-header" href="/admin">Admin Panel</a>}
+            <form action="/api/logout" method="post">
+              <button className="btn-header" type="submit">Logout</button>
+            </form>
+          </nav>
+        )}
+      </div>
+    </header>
+
+    <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+      {children}
+    </main>
+
+    <footer className="bg-white border-t border-slate-200">
+      <div className="max-w-6xl mx-auto px-6 py-4 text-sm">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500">
+          <a href="/privacy" className="hover:text-brand transition-colors underline underline-offset-2">Privacy Policy</a>
+          <div>Made with <span aria-hidden>❤️</span> in Teaneck, NJ</div>
+          <div>© {new Date().getFullYear()} Joseph Jacobs Advertising</div>
+          <a className="btn text-xs py-1.5" href="mailto:admin@josephjacobs.org">Contact Support</a>
+        </div>
+        <div className="mt-3 text-center text-xs text-slate-400">
+          <code className="bg-slate-100 px-2 py-0.5 rounded text-slate-500">v{packageJson.version}</code>
+        </div>
+      </div>
+    </footer>
+
+  </body>
 </html>
 );
 }

@@ -48,22 +48,27 @@ export function ItemList({
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-2">
-        <h3 className="text-lg font-semibold">{label}</h3>
-        <button className="btn btn-primary" onClick={onStartAdd}>+ Add</button>
+      <div className="flex justify-between items-center mb-3">
+        <h3 className="text-base font-semibold text-slate-700">{label}</h3>
+        <button className="btn-primary text-sm py-1.5 px-3" onClick={onStartAdd}>
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
+          </svg>
+          Add
+        </button>
       </div>
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         {[...items].sort((a, b) => a.name.localeCompare(b.name)).map((item) => {
           const actualIndex = items.findIndex(i => i.name === item.name);
           const isEditing = editingIndex === actualIndex;
 
           return (
-            <div key={item.name} className="flex justify-between items-center bg-gray-50 p-2 rounded">
+            <div key={item.name} className={`flex justify-between items-center px-3 py-2 rounded-lg border transition-colors ${isEditing ? 'border-brand/30 bg-brand/5' : 'border-slate-100 bg-slate-50 hover:bg-white'}`}>
               {isEditing ? (
                 <>
                   <input
                     type="text"
-                    className="flex-1 px-2 py-1 border rounded mr-2"
+                    className="flex-1 px-2 py-1 border border-slate-200 rounded-lg mr-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
                     value={editItemValue}
                     onChange={(e) => onEditValueChange(e.target.value)}
                     onKeyDown={(e) => {
@@ -72,24 +77,24 @@ export function ItemList({
                     }}
                     autoFocus
                   />
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <button
                       onClick={onSaveEdit}
-                      className="text-green-600 hover:text-green-700 p-1 rounded"
+                      className="p-1.5 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
                       title="Save changes"
                       disabled={!editItemValue.trim()}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                       </svg>
                     </button>
                     <button
                       onClick={onCancelEdit}
-                      className="text-gray-600 hover:text-gray-700 p-1 rounded"
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                       title="Cancel"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
@@ -97,36 +102,42 @@ export function ItemList({
               ) : (
                 <>
                   <div className="flex items-center gap-2">
-                    <span className={item.hidden ? 'text-gray-400 line-through' : ''}>{item.name}</span>
+                    <span className={`text-sm ${item.hidden ? 'text-slate-300 line-through' : 'text-slate-700'}`}>{item.name}</span>
                     <button
                       onClick={() => onToggleVisibility(item.name)}
-                      className="text-gray-500 hover:text-gray-700 p-1 rounded"
+                      className="p-1 text-slate-300 hover:text-slate-500 rounded transition-colors"
                       title={item.hidden ? `Show this ${singular}` : `Hide this ${singular}`}
                     >
                       {item.hidden ? (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21" />
                         </svg>
                       ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
                       )}
                     </button>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1">
                     <button
-                      className="text-blue-600 hover:text-blue-700 p-1 rounded"
+                      className="p-1.5 text-brand/60 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors"
                       onClick={() => onStartEdit(actualIndex)}
                       title={`Edit ${singular} name`}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
-                    <button className="text-red-600 hover:text-red-700" onClick={() => onRemove(actualIndex)}>
-                      Remove
+                    <button
+                      className="p-1.5 text-brand-secondary/60 hover:text-brand-secondary hover:bg-brand-secondary/5 rounded-lg transition-colors text-xs font-medium"
+                      onClick={() => onRemove(actualIndex)}
+                      title={`Remove ${singular}`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </div>
                 </>
@@ -136,11 +147,11 @@ export function ItemList({
         })}
 
         {isAdding && (
-          <div className="flex items-center gap-2 bg-blue-50 p-2 rounded border">
+          <div className="flex items-center gap-2 bg-brand/5 border border-brand/20 p-2.5 rounded-lg">
             <input
               type="text"
-              className="flex-1 px-2 py-1 border rounded"
-              placeholder={`Enter new ${singular} name`}
+              className="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent"
+              placeholder={`New ${singular} name`}
               value={newItemValue}
               onChange={(e) => onNewValueChange(e.target.value)}
               onKeyDown={(e) => {
@@ -150,14 +161,14 @@ export function ItemList({
               autoFocus
             />
             <button
-              className="btn btn-primary text-sm px-3 py-1"
+              className="btn-primary text-sm py-1.5 px-3"
               onClick={onSaveNew}
               disabled={!newItemValue.trim()}
             >
               Save
             </button>
             <button
-              className="btn btn-secondary text-sm px-3 py-1"
+              className="btn-secondary text-sm py-1.5 px-3"
               onClick={onCancelAdd}
             >
               Cancel
