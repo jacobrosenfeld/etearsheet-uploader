@@ -12,11 +12,13 @@ type PortalConfig = {
   };
 };
 
-// Chunk size must stay under Vercel's 4.5MB limit (3MB server-side cap with overhead)
-const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+// 4MB chunks: bodySizeLimit in next.config.js only applies to Server Actions.
+// API routes are limited by Vercel's 4.5MB platform limit; 4MB data + ~2KB form overhead is safe.
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
 const LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024; // 100MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB (Google Drive's per-file limit)
 const CHUNK_MAX_RETRIES = 3;
+const TIMING_HISTORY = 5; // number of recent chunks used for rolling ETA
 
 function todayISO(): string {
   return new Date().toISOString().substring(0, 10);
@@ -58,10 +60,17 @@ export default function HomePage() {
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Rolling chunk durations (ms) for ETA and interpolation
+  const chunkTimingsRef = useRef<number[]>([]);
+  // Interpolation state: where we were and what this chunk contributes
+  const interpolationRef = useRef<{
+    chunkStart: number;
+    progressAtChunkStart: number;
+    chunkContribution: number;
+  } | null>(null);
 
   useEffect(() => {
     fetch('/api/config')
@@ -81,13 +90,34 @@ export default function HomePage() {
     }
   }, [status]);
 
+  // Smooth progress interpolation: runs every 150ms while uploading,
+  // advances the bar based on how long the current chunk is taking vs recent average.
+  useEffect(() => {
+    if (status !== 'Uploading...') return;
+    const interval = setInterval(() => {
+      const interp = interpolationRef.current;
+      const timings = chunkTimingsRef.current;
+      if (!interp || timings.length === 0) return;
+      const avgDuration = timings.reduce((a, b) => a + b, 0) / timings.length;
+      const elapsed = Date.now() - interp.chunkStart;
+      // Cap at 92% of the chunk's contribution so we never overshoot before the real update
+      const fraction = Math.min(elapsed / avgDuration, 0.92);
+      const interpolated = interp.progressAtChunkStart + fraction * interp.chunkContribution;
+      setUploadProgress(prev => Math.max(prev, Math.min(Math.floor(interpolated), 99)));
+    }, 150);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // ETA using rolling average of recent chunk durations
   const estimatedTimeRemaining = useMemo(() => {
-    if (!uploadStartTime || uploadProgress === 0) return null;
-    const elapsed = Date.now() - uploadStartTime;
-    const rate = uploadProgress / elapsed;
-    const remaining = (100 - uploadProgress) / rate;
-    return Math.round(remaining / 1000);
-  }, [uploadStartTime, uploadProgress]);
+    if (status !== 'Uploading...' || uploadProgress === 0) return null;
+    const timings = chunkTimingsRef.current;
+    if (timings.length === 0) return null;
+    const avgChunkDuration = timings.reduce((a, b) => a + b, 0) / timings.length;
+    const progressPerChunk = file ? (CHUNK_SIZE / file.size) * 100 : 4;
+    const chunksRemaining = Math.ceil(Math.max(0, 100 - uploadProgress) / progressPerChunk);
+    return Math.round((chunksRemaining * avgChunkDuration) / 1000);
+  }, [uploadProgress, status, file]);
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -112,9 +142,10 @@ export default function HomePage() {
   function cancelUpload() {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
+    interpolationRef.current = null;
+    chunkTimingsRef.current = [];
     setStatus('');
     setUploadProgress(0);
-    setUploadStartTime(null);
   }
 
   function resetForNextUpload() {
@@ -134,7 +165,8 @@ export default function HomePage() {
 
     setStatus('Uploading...');
     setUploadProgress(0);
-    setUploadStartTime(Date.now());
+    chunkTimingsRef.current = [];
+    interpolationRef.current = null;
 
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
@@ -173,6 +205,14 @@ export default function HomePage() {
         const chunk = file.slice(start, end);
         const isLastChunk = chunkIndex === totalChunks - 1;
 
+        // Set interpolation baseline for smooth progress within this chunk
+        const chunkContribution = (chunk.size / file.size) * 100;
+        interpolationRef.current = {
+          chunkStart: Date.now(),
+          progressAtChunkStart: Math.round((uploadedBytes / file.size) * 100),
+          chunkContribution,
+        };
+
         const chunkFormData = new FormData();
         chunkFormData.append('uploadUrl', uploadUrl);
         chunkFormData.append('chunk', chunk);
@@ -182,20 +222,25 @@ export default function HomePage() {
         chunkFormData.append('endByte', (end - 1).toString());
         chunkFormData.append('totalSize', file.size.toString());
 
+        const chunkStart = Date.now();
         const chunkResponse = await uploadChunkWithRetry(
           chunkFormData,
           abortController.signal,
           chunkIndex
         );
+        // Record timing for rolling ETA (keep last TIMING_HISTORY entries)
+        const chunkDuration = Date.now() - chunkStart;
+        chunkTimingsRef.current = [...chunkTimingsRef.current.slice(-(TIMING_HISTORY - 1)), chunkDuration];
 
         const chunkResult = await chunkResponse.json();
         uploadedBytes += chunk.size;
+        // Snap to the real value at chunk boundaries
         setUploadProgress(Math.round((uploadedBytes / file.size) * 100));
 
         if (isLastChunk && chunkResult.complete && chunkResult.file) {
           setUploadProgress(100);
           setStatus('success');
-          setUploadStartTime(null);
+          interpolationRef.current = null;
           abortControllerRef.current = null;
           return;
         }
@@ -203,7 +248,7 @@ export default function HomePage() {
 
       setUploadProgress(100);
       setStatus('success');
-      setUploadStartTime(null);
+      interpolationRef.current = null;
       abortControllerRef.current = null;
     } catch (error: any) {
       if (error.name === 'AbortError') {
@@ -212,7 +257,7 @@ export default function HomePage() {
       }
       setStatus(`error:${error.message || 'Upload failed'}`);
       setUploadProgress(0);
-      setUploadStartTime(null);
+      interpolationRef.current = null;
       abortControllerRef.current = null;
     }
   }
