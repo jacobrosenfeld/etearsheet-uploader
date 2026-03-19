@@ -18,20 +18,20 @@ return (
   <body className="min-h-screen bg-slate-50 flex flex-col">
 
     <header className="bg-brand shadow-md">
-      <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-        <a className="flex items-center space-x-3 hover:opacity-85 transition-opacity" href="/">
-          <img src="/jja_white.svg" alt="JJA logo" className="h-10 w-auto" />
-          <div>
-            <div className="text-base font-bold text-white leading-tight">Joseph Jacobs Advertising</div>
-            <div className="text-xs text-white/65 leading-tight">eTearsheet Upload Portal</div>
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3 min-w-0">
+        <a className="flex items-center gap-2.5 hover:opacity-85 transition-opacity flex-shrink-0" href="/">
+          <img src="/jja_white.svg" alt="JJA logo" className="h-9 w-auto" />
+          <div className="hidden sm:block">
+            <div className="text-sm font-bold text-white leading-tight whitespace-nowrap">Joseph Jacobs Advertising</div>
+            <div className="text-xs text-white/60 leading-tight whitespace-nowrap">eTearsheet Upload Portal</div>
           </div>
         </a>
         {userRole && (
-          <nav className="flex items-center gap-2">
-            <a className="btn-header" href="/">Upload</a>
-            {userRole === 'admin' && <a className="btn-header" href="/admin">Admin Panel</a>}
+          <nav className="flex items-center gap-1.5 flex-shrink-0">
+            <a className="btn-header text-sm px-3 py-1.5 whitespace-nowrap" href="/">Upload</a>
+            {userRole === 'admin' && <a className="btn-header text-sm px-3 py-1.5 whitespace-nowrap" href="/admin">Admin</a>}
             <form action="/api/logout" method="post">
-              <button className="btn-header" type="submit">Logout</button>
+              <button className="btn-header text-sm px-3 py-1.5 whitespace-nowrap" type="submit">Logout</button>
             </form>
           </nav>
         )}
