@@ -2,10 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
-body { @apply bg-slate-50 text-slate-900; }
+body { @apply bg-slate-50 text-slate-900 overflow-x-hidden; }
 
 @layer components {
-  .card { @apply bg-white shadow-sm rounded-2xl p-6 border border-slate-100; }
+  .card { @apply bg-white shadow-sm rounded-2xl p-4 sm:p-6 border border-slate-100; }
 
   /* Base button */
   .btn { @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-150 border border-slate-200 text-slate-700 bg-white hover:bg-slate-50; }

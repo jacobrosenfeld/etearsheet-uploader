@@ -172,20 +172,21 @@ function ConfigList({
   return (
     <div className="space-y-3">
       {/* Stats + Add */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 text-xs text-slate-400">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
           <span><strong className="text-slate-600">{items.length}</strong> total</span>
           {hiddenCount > 0 && <span className="text-slate-300">{hiddenCount} hidden</span>}
-          <span>{visibleCount} visible</span>
+          <span className="hidden sm:inline">{visibleCount} visible</span>
         </div>
         <button
-          className="btn-primary text-sm py-1.5 px-3"
+          className="btn-primary text-sm py-1.5 px-3 flex-shrink-0"
           onClick={() => { setAdding(true); setAddValue(''); }}
         >
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
           </svg>
-          Add {singular}
+          <span className="hidden sm:inline">Add {singular}</span>
+          <span className="sm:hidden">Add</span>
         </button>
       </div>
 
@@ -458,11 +459,11 @@ export default function AdminPage() {
     if (!ok) { setCfg(cfg); alert('Failed to remove item'); }
   }
 
-  const tabs: { key: ActiveTab; label: string; count?: number }[] = [
-    { key: 'clients', label: 'Clients', count: cfg.clients.length },
-    { key: 'campaigns', label: 'Campaigns', count: cfg.campaigns.length },
-    { key: 'publications', label: 'Publications', count: cfg.publications.length },
-    { key: 'drive', label: 'Drive Settings' },
+  const tabs: { key: ActiveTab; label: string; mobileLabel: string; count?: number }[] = [
+    { key: 'clients', label: 'Clients', mobileLabel: 'Clients', count: cfg.clients.length },
+    { key: 'campaigns', label: 'Campaigns', mobileLabel: 'Camp.', count: cfg.campaigns.length },
+    { key: 'publications', label: 'Publications', mobileLabel: 'Pubs', count: cfg.publications.length },
+    { key: 'drive', label: 'Drive Settings', mobileLabel: 'Drive' },
   ];
 
   return (
@@ -486,19 +487,19 @@ export default function AdminPage() {
 
       <div className="card">
         {/* Header */}
-        <div className="flex items-start justify-between mb-5">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-800">Admin Configuration</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Manage clients, campaigns, and publications</p>
+        <div className="flex items-center justify-between mb-5 gap-2">
+          <div className="min-w-0">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-800">Admin Configuration</h2>
+            <p className="text-xs text-slate-400 mt-0.5 hidden sm:block">Manage clients, campaigns, and publications</p>
           </div>
           <button
             onClick={() => setShowNotificationPanel(true)}
-            className="relative flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-slate-500 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors border border-slate-100 hover:border-brand/20"
+            className="relative flex items-center gap-1.5 px-2.5 py-2 text-sm font-medium text-slate-500 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors border border-slate-100 hover:border-brand/20 flex-shrink-0"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
             </svg>
-            Updates
+            <span className="hidden sm:inline">Updates</span>
             {unseenVersions.length > 0 && (
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-secondary rounded-full" />
             )}
@@ -511,16 +512,16 @@ export default function AdminPage() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1 px-1.5 py-2 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? 'bg-white text-brand shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               <span className="hidden sm:inline">{tab.label}</span>
-              <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+              <span className="sm:hidden">{tab.mobileLabel}</span>
               {tab.count !== undefined && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                <span className={`hidden sm:inline text-xs px-1.5 py-0.5 rounded-full ${
                   activeTab === tab.key ? 'bg-brand/10 text-brand' : 'bg-slate-200 text-slate-400'
                 }`}>
                   {tab.count}

@@ -38,7 +38,7 @@ return (
       </div>
     </header>
 
-    <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-8">
+    <main className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-6 py-5 sm:py-8">
       {children}
     </main>
 
