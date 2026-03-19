@@ -16,20 +16,21 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { fileId, fileName, client, campaign, publication } = body;
+    const { fileId, fileName, client, campaign, publication, date } = body;
 
     let fileMetadata;
-    
-    if (fileId && fileId !== 'uploaded') {
+
+    if (fileId) {
       // We have a file ID, verify it directly
       fileMetadata = await verifyUploadCompletion(fileId);
     } else if (fileName && client && campaign && publication) {
-      // No file ID, need to find the file by name in the target folder
+      // No file ID — find the file by name in the target folder
       fileMetadata = await findRecentUpload({
         fileName,
         client,
         campaign,
-        publication
+        publication,
+        date: date || undefined
       });
     } else {
       return NextResponse.json({ error: 'Missing fileId or file location details' }, { status: 400 });

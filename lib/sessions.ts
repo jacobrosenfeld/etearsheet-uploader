@@ -26,7 +26,9 @@ export async function getSession() {
 
   try {
     const { payload } = await jwtVerify(token, SESSION_SECRET);
-    return payload as { role: 'user' | 'admin' };
+    const role = payload.role;
+    if (role !== 'user' && role !== 'admin') return null;
+    return { role };
   } catch {
     return null;
   }

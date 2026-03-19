@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { publication, client, campaign, fileName, fileSize, mimeType } = body;
+    const { publication, client, campaign, fileName, fileSize, mimeType, date } = body;
 
     if (!publication || !client || !campaign || !fileName || !fileSize) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -30,7 +30,8 @@ export async function POST(req: NextRequest) {
       publication,
       fileName,
       fileSize,
-      mimeType: mimeType || 'application/octet-stream'
+      mimeType: mimeType || 'application/octet-stream',
+      date: date || undefined
     });
 
     return NextResponse.json({ uploadUrl });

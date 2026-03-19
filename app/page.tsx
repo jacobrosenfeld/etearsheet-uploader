@@ -12,110 +12,180 @@ type PortalConfig = {
   };
 };
 
+// 4MB chunks: bodySizeLimit in next.config.js only applies to Server Actions.
+// API routes are limited by Vercel's 4.5MB platform limit; 4MB data + ~2KB form overhead is safe.
+const CHUNK_SIZE = 4 * 1024 * 1024; // 4MB
+const LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024; // 100MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024; // 5GB (Google Drive's per-file limit)
+const CHUNK_MAX_RETRIES = 3;
+const TIMING_HISTORY = 5; // number of recent chunks used for rolling ETA
+
+function todayISO(): string {
+  return new Date().toISOString().substring(0, 10);
+}
+
+async function uploadChunkWithRetry(
+  formData: FormData,
+  signal: AbortSignal,
+  chunkIndex: number
+): Promise<Response> {
+  let lastError: Error = new Error('Unknown error');
+  for (let attempt = 0; attempt <= CHUNK_MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, attempt - 1)));
+    }
+    try {
+      const res = await fetch('/api/upload/proxy', { method: 'POST', body: formData, signal });
+      if (res.status === 410) {
+        throw new Error('Upload session expired. Please try uploading again.');
+      }
+      if (res.ok) return res;
+      const err = await res.json().catch(() => ({}));
+      lastError = new Error(err.error || `Chunk ${chunkIndex + 1} failed (${res.status})`);
+    } catch (err: any) {
+      if (err.name === 'AbortError') throw err;
+      lastError = err;
+    }
+  }
+  throw lastError;
+}
+
 export default function HomePage() {
   const [cfg, setCfg] = useState<PortalConfig | null>(null);
   const [pub, setPub] = useState('');
   const [client, setClient] = useState('');
   const [campaign, setCampaign] = useState('');
+  const [date, setDate] = useState(todayISO());
   const [file, setFile] = useState<File | null>(null);
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStartTime, setUploadStartTime] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Configuration constants
-  const UPLOAD_TIMEOUT_MS = 300000; // 5 minutes (matches server-side timeout)
-  const LARGE_FILE_WARNING_THRESHOLD = 100 * 1024 * 1024; // 100MB
-  const CHUNK_SIZE = 2 * 1024 * 1024; // 2MB chunks to stay well under Vercel's 4.5MB limit
+  const abortControllerRef = useRef<AbortController | null>(null);
+  // Rolling chunk durations (ms) for ETA and interpolation
+  const chunkTimingsRef = useRef<number[]>([]);
+  // Interpolation state: where we were and what this chunk contributes
+  const interpolationRef = useRef<{
+    chunkStart: number;
+    progressAtChunkStart: number;
+    chunkContribution: number;
+  } | null>(null);
 
   useEffect(() => {
     fetch('/api/config')
       .then(res => res.json())
       .then(data => {
-        if (!data.error) {
-          setCfg(data);
-        }
+        if (!data.error) setCfg(data);
         setLoading(false);
       })
       .catch(() => setLoading(false));
   }, []);
 
-  // Calculate estimated time remaining (memoized to avoid redundant calculations)
-  const estimatedTimeRemaining = useMemo(() => {
-    if (!uploadStartTime || uploadProgress === 0) return null;
-    const elapsed = Date.now() - uploadStartTime;
-    const rate = uploadProgress / elapsed; // progress per ms
-    const remaining = (100 - uploadProgress) / rate;
-    return Math.round(remaining / 1000); // convert to seconds
-  }, [uploadStartTime, uploadProgress]);
+  // Auto-dismiss success message after 8 seconds
+  useEffect(() => {
+    if (status === 'success') {
+      const timer = setTimeout(() => setStatus(''), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [status]);
 
-  // Format file size for display
+  // Smooth progress interpolation: runs every 150ms while uploading,
+  // advances the bar based on how long the current chunk is taking vs recent average.
+  useEffect(() => {
+    if (status !== 'Uploading...') return;
+    const interval = setInterval(() => {
+      const interp = interpolationRef.current;
+      const timings = chunkTimingsRef.current;
+      if (!interp || timings.length === 0) return;
+      const avgDuration = timings.reduce((a, b) => a + b, 0) / timings.length;
+      const elapsed = Date.now() - interp.chunkStart;
+      // Cap at 92% of the chunk's contribution so we never overshoot before the real update
+      const fraction = Math.min(elapsed / avgDuration, 0.92);
+      const interpolated = interp.progressAtChunkStart + fraction * interp.chunkContribution;
+      setUploadProgress(prev => Math.max(prev, Math.min(Math.floor(interpolated), 99)));
+    }, 150);
+    return () => clearInterval(interval);
+  }, [status]);
+
+  // ETA using rolling average of recent chunk durations
+  const estimatedTimeRemaining = useMemo(() => {
+    if (status !== 'Uploading...' || uploadProgress === 0) return null;
+    const timings = chunkTimingsRef.current;
+    if (timings.length === 0) return null;
+    const avgChunkDuration = timings.reduce((a, b) => a + b, 0) / timings.length;
+    const progressPerChunk = file ? (CHUNK_SIZE / file.size) * 100 : 4;
+    const chunksRemaining = Math.ceil(Math.max(0, 100 - uploadProgress) / progressPerChunk);
+    return Math.round((chunksRemaining * avgChunkDuration) / 1000);
+  }, [uploadProgress, status, file]);
+
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(2) + ' KB';
-    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
     return (bytes / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
   };
 
-  // Drag and drop handlers
-  const handleDragEnter = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-  };
-
+  const handleDragEnter = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); setIsDragging(true); };
   const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Only set dragging to false if we're leaving the drop zone entirely
-    if (e.currentTarget === e.target) {
-      setIsDragging(false);
-    }
+    e.preventDefault(); e.stopPropagation();
+    if (e.currentTarget === e.target) setIsDragging(false);
   };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
-
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); };
   const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     setIsDragging(false);
-
-    const files = e.dataTransfer?.files;
-    if (files && files.length > 0) {
-      setFile(files[0]);
-    }
+    const dropped = e.dataTransfer?.files?.[0];
+    if (dropped) setFile(dropped);
   };
 
-  const handleFileInputClick = () => {
-    fileInputRef.current?.click();
-  };
+  function cancelUpload() {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    interpolationRef.current = null;
+    chunkTimingsRef.current = [];
+    setStatus('');
+    setUploadProgress(0);
+  }
 
-  async function doUpload(e: React.FormEvent) {
-    e.preventDefault();
+  function resetForNextUpload() {
+    setStatus('');
+    setFile(null);
+    setUploadProgress(0);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function performUpload() {
     if (!file || !pub || !client || !campaign) return;
-    
+
+    if (file.size > MAX_FILE_SIZE) {
+      setStatus(`error:File is too large (${formatFileSize(file.size)}). Maximum size is 5 GB.`);
+      return;
+    }
+
     setStatus('Uploading...');
     setUploadProgress(0);
-    setUploadStartTime(Date.now());
-    
+    chunkTimingsRef.current = [];
+    interpolationRef.current = null;
+
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
-      // Step 1: Request an upload session from our backend (only metadata, no file)
+      // Step 1: Initiate resumable upload session
       const initiateRes = await fetch('/api/upload/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           publication: pub,
-          client: client,
-          campaign: campaign,
+          client,
+          campaign,
           fileName: file.name,
           fileSize: file.size,
-          mimeType: file.type || 'application/octet-stream'
-        })
+          mimeType: file.type || 'application/octet-stream',
+          date
+        }),
+        signal: abortController.signal
       });
 
       if (!initiateRes.ok) {
@@ -124,13 +194,9 @@ export default function HomePage() {
       }
 
       const { uploadUrl } = await initiateRes.json();
-      console.log('Upload URL received:', uploadUrl);
 
-      // Step 2: Upload file in chunks through our backend proxy
-      // This avoids both CORS issues and Vercel's 4.5MB payload limit
+      // Step 2: Upload file in chunks through proxy
       const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
-      console.log(`Uploading file in ${totalChunks} chunks of ${CHUNK_SIZE} bytes each`);
-
       let uploadedBytes = 0;
 
       for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
@@ -139,64 +205,80 @@ export default function HomePage() {
         const chunk = file.slice(start, end);
         const isLastChunk = chunkIndex === totalChunks - 1;
 
-        console.log(`Uploading chunk ${chunkIndex + 1}/${totalChunks}: bytes ${start}-${end}`);
+        // Set interpolation baseline for smooth progress within this chunk
+        const chunkContribution = (chunk.size / file.size) * 100;
+        interpolationRef.current = {
+          chunkStart: Date.now(),
+          progressAtChunkStart: Math.round((uploadedBytes / file.size) * 100),
+          chunkContribution,
+        };
 
-        // Upload chunk
         const chunkFormData = new FormData();
         chunkFormData.append('uploadUrl', uploadUrl);
         chunkFormData.append('chunk', chunk);
         chunkFormData.append('chunkIndex', chunkIndex.toString());
         chunkFormData.append('totalChunks', totalChunks.toString());
         chunkFormData.append('startByte', start.toString());
-        chunkFormData.append('endByte', (end - 1).toString()); // end byte is inclusive
+        chunkFormData.append('endByte', (end - 1).toString());
         chunkFormData.append('totalSize', file.size.toString());
 
-        const chunkResponse = await fetch('/api/upload/proxy', {
-          method: 'POST',
-          body: chunkFormData
-        });
-
-        if (!chunkResponse.ok) {
-          const error = await chunkResponse.json();
-          throw new Error(error.error || `Failed to upload chunk ${chunkIndex + 1}`);
-        }
+        const chunkStart = Date.now();
+        const chunkResponse = await uploadChunkWithRetry(
+          chunkFormData,
+          abortController.signal,
+          chunkIndex
+        );
+        // Record timing for rolling ETA (keep last TIMING_HISTORY entries)
+        const chunkDuration = Date.now() - chunkStart;
+        chunkTimingsRef.current = [...chunkTimingsRef.current.slice(-(TIMING_HISTORY - 1)), chunkDuration];
 
         const chunkResult = await chunkResponse.json();
         uploadedBytes += chunk.size;
-        const progress = Math.round((uploadedBytes / file.size) * 100);
-        setUploadProgress(progress);
+        // Snap to the real value at chunk boundaries
+        setUploadProgress(Math.round((uploadedBytes / file.size) * 100));
 
         if (isLastChunk && chunkResult.complete && chunkResult.file) {
-          // Upload complete!
           setUploadProgress(100);
           setStatus('success');
-          setFile(null);
-          setUploadStartTime(null);
+          interpolationRef.current = null;
+          abortControllerRef.current = null;
           return;
         }
       }
 
-      // All chunks uploaded
       setUploadProgress(100);
       setStatus('success');
-      setFile(null);
-      setUploadStartTime(null);
+      interpolationRef.current = null;
+      abortControllerRef.current = null;
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // User cancelled — status already reset by cancelUpload()
+        return;
+      }
       setStatus(`error:${error.message || 'Upload failed'}`);
       setUploadProgress(0);
-      setUploadStartTime(null);
+      interpolationRef.current = null;
+      abortControllerRef.current = null;
     }
+  }
+
+  async function doUpload(e: React.FormEvent) {
+    e.preventDefault();
+    await performUpload();
   }
 
   if (loading) return <div className="card">Loading configuration...</div>;
   if (!cfg) return <div className="card">No configuration available</div>;
+
+  const isUploading = status === 'Uploading...';
+  const isSuccess = status === 'success';
+  const isError = status.startsWith('error:');
 
   return (
     <div className="space-y-6">
       <div className="card space-y-4">
         <h2 className="text-xl font-semibold">Upload a File</h2>
 
-        {/* Drive folder info */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <div className="text-sm text-blue-800">
             <strong>📁 Files will be organized in Google Drive:</strong><br/>
@@ -207,35 +289,48 @@ export default function HomePage() {
         <form onSubmit={doUpload} className="grid gap-4">
           <div>
             <label className="label">Publication</label>
-            <select className="input" value={pub} onChange={(e)=>setPub(e.target.value)}>
+            <select className="input" value={pub} onChange={(e) => setPub(e.target.value)}>
               <option value="">Select publication…</option>
-              {[...cfg.publications].filter(p => !p.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
+              {[...cfg.publications].filter(p => !p.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(p =>
+                <option key={p.name} value={p.name}>{p.name}</option>
+              )}
             </select>
           </div>
           <div>
             <label className="label">Client</label>
-            <select className="input" value={client} onChange={(e)=>setClient(e.target.value)}>
+            <select className="input" value={client} onChange={(e) => setClient(e.target.value)}>
               <option value="">Select client…</option>
-              {[...cfg.clients].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {[...cfg.clients].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c =>
+                <option key={c.name} value={c.name}>{c.name}</option>
+              )}
             </select>
           </div>
           <div>
             <label className="label">Campaign</label>
-            <select className="input" value={campaign} onChange={(e)=>setCampaign(e.target.value)}>
+            <select className="input" value={campaign} onChange={(e) => setCampaign(e.target.value)}>
               <option value="">Select campaign…</option>
-              {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+              {[...cfg.campaigns].filter(c => !c.hidden).sort((a, b) => a.name.localeCompare(b.name)).map(c =>
+                <option key={c.name} value={c.name}>{c.name}</option>
+              )}
             </select>
           </div>
           <div>
+            <label className="label">Publication Date</label>
+            <input
+              type="date"
+              className="input"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div>
             <label className="label">File</label>
-            
-            {/* Drag and Drop Zone */}
             <div
               onDragEnter={handleDragEnter}
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
-              onClick={handleFileInputClick}
+              onClick={() => fileInputRef.current?.click()}
               className={`
                 relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer
                 transition-all duration-200 ease-in-out
@@ -250,23 +345,15 @@ export default function HomePage() {
                 type="file"
                 onChange={(e) => setFile(e.target.files?.[0] || null)}
               />
-              
               <div className="space-y-2">
                 {file ? (
                   <>
                     <div className="text-4xl" role="img" aria-label="Document file selected">📄</div>
-                    <div className="text-sm font-semibold text-gray-700">
-                      {file.name}
-                    </div>
-                    <div className="text-xs text-gray-500">
-                      {formatFileSize(file.size)}
-                    </div>
+                    <div className="text-sm font-semibold text-gray-700">{file.name}</div>
+                    <div className="text-xs text-gray-500">{formatFileSize(file.size)}</div>
                     <button
                       type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setFile(null);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; }}
                       className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
                     >
                       Remove file
@@ -274,102 +361,121 @@ export default function HomePage() {
                   </>
                 ) : (
                   <>
-                    <div className="text-5xl mb-2" role="img" aria-label={isDragging ? "Drop file here" : "Drag and drop file"}>
+                    <div className="text-5xl mb-2" role="img" aria-label={isDragging ? 'Drop file here' : 'Drag and drop file'}>
                       {isDragging ? '📥' : '📎'}
                     </div>
                     <div className="text-base font-semibold text-gray-700">
                       {isDragging ? 'Drop file here' : 'Drag & drop file here'}
                     </div>
-                    <div className="text-sm text-gray-500">
-                      or click to browse
-                    </div>
+                    <div className="text-sm text-gray-500">or click to browse</div>
                   </>
                 )}
               </div>
             </div>
-            
             {file && file.size > LARGE_FILE_WARNING_THRESHOLD && (
               <div className="mt-2 text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
-                ⚠️ Large file detected ({formatFileSize(file.size)}). Upload may take several minutes.
+                ⚠️ Large file ({formatFileSize(file.size)}) — upload may take several minutes.
               </div>
             )}
           </div>
-          <button className="btn btn-primary" type="submit" disabled={status === 'Uploading...'}>
-            {status === 'Uploading...' ? 'Uploading...' : 'Upload'}
-          </button>
+
+          <div className="flex gap-3">
+            <button className="btn btn-primary flex-1" type="submit" disabled={isUploading}>
+              {isUploading ? 'Uploading…' : 'Upload'}
+            </button>
+            {isUploading && (
+              <button type="button" className="btn btn-secondary" onClick={cancelUpload}>
+                Cancel
+              </button>
+            )}
+          </div>
         </form>
-        
-        {/* Upload Progress Bar */}
-        {status === 'Uploading...' && (
-          <div className="space-y-3 animate-fade-in">
-            {/* Progress Bar */}
-            <div className="relative w-full bg-gradient-to-r from-gray-100 to-gray-200 rounded-full h-8 overflow-hidden shadow-inner">
-              <div 
-                className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center shadow-lg"
+
+        {/* Upload progress */}
+        {isUploading && (
+          <div className="space-y-3">
+            <div className="relative w-full bg-gray-200 rounded-full h-8 overflow-hidden shadow-inner">
+              <div
+                className="absolute inset-0 bg-gradient-to-r from-blue-500 via-blue-600 to-blue-700 h-full transition-all duration-500 ease-out flex items-center justify-center"
                 style={{ width: `${uploadProgress}%` }}
               >
-                <div className="absolute inset-0 bg-white/10 motion-safe:animate-pulse"></div>
                 <span className="relative z-10 text-sm font-bold text-white drop-shadow-md">
                   {uploadProgress}%
                 </span>
               </div>
             </div>
-
-            {/* Upload Info */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-xl p-4 shadow-sm">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="text-2xl motion-safe:animate-pulse" role="img" aria-label="Upload in progress">⏳</div>
                   <div>
-                    <div className="text-sm font-semibold text-blue-900">
-                      Uploading {file?.name}
-                    </div>
-                    {file && (
-                      <div className="text-xs text-blue-600">
-                        {formatFileSize(file.size)}
-                      </div>
-                    )}
+                    <div className="text-sm font-semibold text-blue-900">Uploading {file?.name}</div>
+                    {file && <div className="text-xs text-blue-600">{formatFileSize(file.size)}</div>}
                   </div>
                 </div>
                 {uploadProgress > 0 && estimatedTimeRemaining && estimatedTimeRemaining > 0 && (
                   <div className="text-right">
                     <div className="text-xs text-blue-500 font-medium">Time remaining</div>
-                    <div className="text-lg font-bold text-blue-700">
-                      {estimatedTimeRemaining}s
-                    </div>
+                    <div className="text-lg font-bold text-blue-700">{estimatedTimeRemaining}s</div>
                   </div>
                 )}
               </div>
             </div>
           </div>
         )}
-        {status === 'success' && (
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-lg p-4 animate-pulse">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">🎉</span>
-              <div>
-                <div className="text-lg font-bold text-green-700">Upload Successful!</div>
-                <div className="text-sm text-green-600">Your file has been uploaded to Google Drive</div>
+
+        {/* Success state */}
+        {isSuccess && (
+          <div className="bg-green-50 border-2 border-green-400 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">🎉</span>
+                <div>
+                  <div className="text-base font-bold text-green-700">Upload Successful!</div>
+                  <div className="text-sm text-green-600">Your file has been uploaded to Google Drive.</div>
+                </div>
               </div>
+              <button
+                type="button"
+                onClick={resetForNextUpload}
+                className="btn btn-primary text-sm whitespace-nowrap"
+              >
+                Upload another
+              </button>
             </div>
           </div>
         )}
-        {status.startsWith('error:') && (
-          <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg p-3">
-            ❌ Upload failed: {status.replace('error:', '')}
+
+        {/* Error state */}
+        {isError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start justify-between gap-3">
+            <div className="text-sm text-red-600">
+              ❌ {status.replace('error:', '')}
+            </div>
+            <button
+              type="button"
+              onClick={performUpload}
+              className="btn btn-secondary text-sm whitespace-nowrap"
+              disabled={!file || !pub || !client || !campaign}
+            >
+              Try again
+            </button>
           </div>
         )}
       </div>
 
-      {/* Upload preview */}
+      {/* Folder structure preview */}
       <div className="card">
         <h3 className="text-lg font-semibold mb-2">Folder Structure Preview</h3>
         <div className="text-xs text-neutral-500 font-mono bg-gray-50 p-3 rounded">
           📁 {cfg.driveSettings?.rootFolderName || 'JJA eTearsheets'}<br/>
-          &nbsp;&nbsp;📁 {client || 'Client'}<br/>
-          &nbsp;&nbsp;&nbsp;&nbsp;📁 {campaign || 'Campaign'}<br/>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {pub || 'Publication'}<br/>
-          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 {pub ? `${pub}_${new Date().toISOString().split('T')[0]}_${file?.name || 'filename.pdf'}` : 'Publication_YYYY-MM-DD_filename.pdf'}
+          &nbsp;&nbsp;📁 {client || <em>client</em>}<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;📁 {campaign || <em>campaign</em>}<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📁 {pub || <em>publication</em>}<br/>
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 {pub
+            ? `${pub}_${date}_${file?.name || 'filename.pdf'}`
+            : <em>publication_YYYY-MM-DD_filename.pdf</em>
+          }
         </div>
       </div>
     </div>

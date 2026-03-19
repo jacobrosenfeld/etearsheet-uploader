@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getRole } from '@/lib/sessions';
 import { uploadChunkToGoogleDrive, finalizeChunkedUpload } from '@/lib/google';
 
-// This endpoint receives file chunks and uploads them to Google Drive
-// Supports chunked uploads to bypass Vercel's 4.5MB limit
-// Each chunk must be <3MB to ensure we stay under Vercel's limit with overhead
+// This endpoint receives file chunks and uploads them to Google Drive.
+// Chunks up to 4MB are accepted; with ~2KB form overhead this stays under Vercel's 4.5MB limit.
+// The bodySizeLimit in next.config.js applies to Server Actions only, not API routes.
 export const maxDuration = 300; // 5 minutes for large files
 export const dynamic = 'force-dynamic';
 
@@ -32,11 +32,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Proxy] Receiving chunk ${chunkIndex + 1}/${totalChunks}, bytes ${startByte}-${endByte}, size: ${chunk.size} bytes`);
 
-    // Verify chunk size is reasonable (<3MB to avoid Vercel limit)
-    if (chunk.size > 3 * 1024 * 1024) {
+    // Reject chunks that would push the total request over Vercel's 4.5MB platform limit.
+    // 4MB data + ~2KB form overhead is safe; anything larger risks a 413 from the platform.
+    if (chunk.size > 4.2 * 1024 * 1024) {
       console.error(`[Proxy] Chunk too large: ${chunk.size} bytes`);
-      return NextResponse.json({ 
-        error: `Chunk size ${chunk.size} bytes exceeds 3MB limit. Use smaller chunks.` 
+      return NextResponse.json({
+        error: `Chunk size ${chunk.size} bytes exceeds the 4MB limit.`
       }, { status: 413 });
     }
 
